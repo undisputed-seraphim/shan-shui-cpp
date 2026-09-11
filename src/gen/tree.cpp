@@ -71,11 +71,6 @@ std::pair<Pts, Pts> branch(const BranchArg& a) {
     tlist[i][1] = d * std::sin(ang2 - ta + a.ang);
   }
   Pts trlist1, trlist2;
-  if (getenv("SS_DBG_BR")) {
-    fprintf(stderr, "tlist:");
-    for (auto& t : tlist) fprintf(stderr, " %.6f,%.6f", t[0], t[1]);
-    fprintf(stderr, "\n");
-  }
   double span = a.det;
   double tl = ((double)tlist.size() - 1) * span; // JS: float, loop runs while i < tl
   double lx = 0, ly = 0;
@@ -94,6 +89,8 @@ std::pair<Pts, Pts> branch(const BranchArg& a) {
                        nyy + std::sin(ang2 + PI / 2) * (nw + woff + b)});
     trlist2.push_back({nxx + std::cos(ang2 - PI / 2) * (nw - woff + b),
                        nyy + std::sin(ang2 - PI / 2) * (nw - woff + b)});
+    lx = nxx;
+    ly = nyy;
   }
   return {trlist1, trlist2};
 }
@@ -254,12 +251,6 @@ void barkify(Painter& p, double x, double y, std::pair<Pts, Pts>& tr) {
       rglist.back().push_back(trflist[i]);
       lastSrc.back() = (int)i;
     }
-  }
-  if (getenv("SS_DBG_RG")) {
-    fprintf(stderr, "CPP rglist rows: %zu\n", rglist.size());
-    for (size_t qi = 0; qi < rglist.size() && qi < 14; qi++)
-      fprintf(stderr, "  row %zu: len=%zu last=%s\n", qi, rglist[qi].size(),
-              rglist[qi].empty() ? "None" : "");
   }
   for (size_t i = 0; i < rglist.size(); i++) {
     Pts divRow = div(rglist[i], 4);
@@ -427,10 +418,6 @@ void Tree::tree04(Painter& p, double x, double y, double hei, double wid,
       trmlist.push_back(trlist[i]);
     }
   }
-  if (getenv("SS_DBG_TL")) {
-    for (int qi = 0; qi < 14; qi++)
-      fprintf(stderr, "tr[%d]=(%.3f,%.3f)\n", qi, trlist[qi][0], trlist[qi][1]);
-  }
   p.poly(trmlist, PArg{.xof = x, .yof = y, .fil = "white", .str = col, .wid = 0});
 
   trmlist.erase(trmlist.begin());
@@ -494,10 +481,6 @@ void Tree::tree05(Painter& p, double x, double y, double hei, double wid,
     } else {
       trmlist.push_back(trlist[i]);
     }
-  }
-  if (getenv("SS_DBG_TL")) {
-    for (int qi = 0; qi < 14; qi++)
-      fprintf(stderr, "tr[%d]=(%.3f,%.3f)\n", qi, trlist[qi][0], trlist[qi][1]);
   }
   p.poly(trmlist, PArg{.xof = x, .yof = y, .fil = "white", .str = col, .wid = 0});
 
