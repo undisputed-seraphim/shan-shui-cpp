@@ -1,0 +1,19 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 31, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "host",
+      "displayName": "Native (g++)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-host"
+    },
+    {
+      "name": "wasm",
+      "displayName": "Emscripten",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build-wasm",
+      "toolchainFile": "${sourceDir}/../emsdk/upstream/emscripten/cmake/Modules/Platform/Emscripten.cmake"
+    }
+  ]
+}
