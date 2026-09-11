@@ -1,0 +1,69 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>{Shan, Shui}* - C++/WASM</title>
+</head>
+<body style="margin:0">
+  <div id="SETTING" style="position:fixed; z-index:1000; left:40px; top:3px;">
+    <div id="SET_BTN" style="width:32px; height:32px; color:rgba(0,0,0,0.4); border:1px solid rgba(0,0,0,0.4); text-align:center; display:table; cursor:pointer;"
+      onmouseover="document.getElementById('SET_BTN').style.backgroundColor=btnHoverCol"
+      onmouseout="document.getElementById('SET_BTN').style.backgroundColor='rgba(0,0,0,0)'"
+      onclick="toggleVisible('MENU');toggleText('SET_BTN.t','&#x2630;','&#x2715;')" title="Settings">
+      <div style="display:table-cell; vertical-align:middle;">
+        <font id="SET_BTN.t" size="4px"> &#x2630; </font>
+      </div>
+    </div>
+    <div style="height:4px"></div>
+    <div id="MENU" style="display:none; background-color:rgba(0,0,0,0.1); border:1px solid rgba(0,0,0,0.4);">
+      <table>
+        <tr><td><pre>SEED</pre></td></tr>
+        <tr><td>
+          <input title="random seed" id="INP_SEED" />
+          <button onclick="reloadWSeed(document.getElementById('INP_SEED').value)">Generate</button>
+        </td></tr>
+        <tr><td><pre>VIEW</pre></td></tr>
+        <tr><td>
+          <button title="view left" onclick="xcroll(-parseFloat(document.getElementById('INC_STEP').value))">&lt;</button>
+          <input title="increment step" id="INC_STEP" type="number" value="200" min="0" max="10000" step="20" />
+          <button title="view right" onclick="xcroll(parseFloat(document.getElementById('INC_STEP').value))">&gt;</button>
+        </td></tr>
+        <tr><td>
+          <pre><input id="AUTO_SCROLL" type="checkbox"
+            onchange="autoxcroll(parseFloat(document.getElementById('INC_STEP').value))">Auto-scroll</pre>
+        </td></tr>
+        <tr><td><pre>SAVE</pre></td></tr>
+        <tr><td>
+          <button title="WARNING: This may take a while..." type="button" id="dwn-btn" value="Download as SVG"
+            onclick="download('' + (Math.random()) + '.svg', document.getElementById('BG').innerHTML)">
+            Download as .SVG
+          </button>
+        </td></tr>
+      </table>
+    </div>
+  </div>
+
+  <table style="border-bottom: 1px solid rgba(0,0,0,0.1);">
+    <tr>
+      <td>
+        <div id="L" onmouseover="rstyle('L',true)" onmouseout="rstyle('L',false)" onclick="xcroll(-200)">
+          <div id="L.t"><font size="6px">&#x3008;</font></div>
+        </div>
+      </td>
+      <td>
+        <div id="BG"></div>
+      </td>
+      <td>
+        <div id="R" onmouseover="rstyle('R',true)" onmouseout="rstyle('R',false)" onclick="xcroll(200)">
+          <div id="R.t"><font size="6px">&#x3009;</font></div>
+        </div>
+      </td>
+    </tr>
+  </table>
+
+  <canvas id="bgcanv" width="512" height="512" hidden></canvas>
+
+  <script src="ss.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
