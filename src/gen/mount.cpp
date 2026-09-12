@@ -22,7 +22,7 @@ void foot(Painter& p, const ScratchPtsList& ptlist, double xof, double yof) {
 			ni = std::min(ni + (int)randChoice<double>({1.0, 2.0}), (int)ptlist.size() - 1);
 			ftlist.push_back({});
 			ftlist.push_back({});
-			// JS: for (j = 0; j < min(ptlist[i].length/8, 10); j++) - float bound!
+			// fractional bound: fold spans min(row/8, 10) points
 			double jmax = std::min(ptlist[i].size() / 8.0, 10.0);
 			for (double j = 0; j < jmax; j++) {
 				ftlist[ftlist.size() - 2].push_back({ptlist[i][j][0] + nse(j * 0.1, (double)i) * 10, ptlist[i][j][1]});
@@ -477,12 +477,14 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 	ScratchPts grlist = grlist1;
 	std::reverse(grlist.begin(), grlist.end());
 	grlist.insert(grlist.end(), grlist2.begin(), grlist2.end());
-	grlist.push_back(grlist.front()); // JS: [grlist1[0]] aliases the first point
+	// close the ring; the first point is the same vertex as the last, so it
+	// must inherit the jitter the last point received
+	grlist.push_back(grlist.front());
 	for (size_t i = 0; i < grlist.size(); i++) {
 		double v = (1 - std::fabs((double)(i % (int)d) - d / 2) / (d / 2)) * 0.12;
 		grlist[i][0] *= 1 - v + nse(grlist[i][1] * 0.5) * v;
 	}
-	grlist[0] = grlist.back(); // JS array aliasing: jitter at last index hits first too
+	grlist.front() = grlist.back();
 
 	p.poly(grlist, PArg{.xof = xoff, .yof = yoff, .fil = "white", .str = "none", .wid = 2});
 	{

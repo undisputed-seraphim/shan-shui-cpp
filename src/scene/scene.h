@@ -20,7 +20,7 @@ struct Scene {
 	double cursx = 0;
 	double lasttick = 0;
 	double windx = 3000, windy = 800;
-	std::map<int, double> planmtx; // JS: sparse array with NaN semantics
+	std::map<int, int> planmtx; // mount planner occupancy grid
 
 	void seed(const std::string& s);
 	void reset();

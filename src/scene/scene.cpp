@@ -56,13 +56,11 @@ std::vector<Plan> mountplanner(Scene& sc, double xmin, double xmax) {
 
 	const double xstep = 5;
 	const double mwid = 200;
-	for (double i = xmin; i < xmax; i += xstep) {
-		int i1 = (int)std::floor(i / xstep);
-		// JS: MEM.planmtx[i1] = MEM.planmtx[i1] || 0 (NaN -> 0)
-		auto it = sc.planmtx.find(i1);
-		double v = it == sc.planmtx.end() ? std::nan("") : it->second;
-		sc.planmtx[i1] = (std::isnan(v) || v == 0) ? 0 : v;
-	}
+	// per-slab occupancy: materialize this slab's cells so mountain spans
+	// accumulate; cells outside the slab stay untouched (the JS version's
+	// NaN marks there read back as 0, i.e. unoccupied)
+	for (double i = xmin; i < xmax; i += xstep)
+		sc.planmtx[(int)std::floor(i / xstep)] += 0;
 
 	double jLast = 0;
 	for (double i = xmin; i < xmax; i += xstep) {
@@ -73,11 +71,10 @@ std::vector<Plan> mountplanner(Scene& sc, double xmin, double xmax) {
 				Plan r{"mount", xof, yof, ns(i, j)};
 				if (chadd(r)) {
 					for (int k = (int)std::floor((xof - mwid) / xstep); k < (xof + mwid) / xstep; k++) {
-						// JS: planmtx[k] += 1 (undefined + 1 = NaN)
+						// mark the mountain's span; never-covered cells stay
+						// unoccupied (JS wrote NaN there, which also read 0)
 						auto it = sc.planmtx.find(k);
-						if (it == sc.planmtx.end())
-							sc.planmtx[k] = std::nan("");
-						else
+						if (it != sc.planmtx.end())
 							it->second += 1;
 					}
 				}

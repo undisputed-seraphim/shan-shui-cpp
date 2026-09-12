@@ -117,7 +117,8 @@ void blob(Painter& p, double x, double y, const BArg& a, const Fun& fun = kDefau
 
 template <typename PtsT = Pts>
 inline ScratchPts subdivide(const PtsT& plist, double reso) {
-	double tl = ((double)plist.size() - 1) * reso; // float bound (negative if empty)
+	// fractional bound: (n-1)*reso segments (negative for empty input)
+	double tl = ((double)plist.size() - 1) * reso;
 	double lx = 0, ly = 0;
 	ScratchPts rlist;
 	rlist.reserve((size_t)std::max((int)tl, 0) + 1);

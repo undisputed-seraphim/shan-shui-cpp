@@ -38,7 +38,7 @@ std::pair<Pts, Pts> branch(const BranchArg& a) {
 	double span = a.det;
 	double tl = ((double)tlist.size() - 1) * span;
 	trlist1.reserve((int)tl + 1);
-	trlist2.reserve((int)tl + 1); // JS: float, loop runs while i < tl
+	trlist2.reserve((int)tl + 1);
 	double lx = 0, ly = 0;
 	for (int i = 0; i < tl; i++) {
 		const Pt& lastp = tlist[(size_t)std::floor(i / span)];
@@ -73,8 +73,7 @@ void twig(Painter& p, double tx, double ty, int dep, const TwigArg& a) {
 	const int tl = 10;
 	twlist.reserve(tl + 1);
 	double hs = rnd() * 0.5 + 0.5;
-	rnd(); // JS: randChoice([fun2]) consumes a draw even with a single element
-	// tfun = fun2 (always chosen from [fun2])
+	rnd(); // the pick among a single candidate still consumes a draw
 	auto tfun = [](double x, int i) { return -1 / std::pow((double)i / tl + 1, 5) + 1; };
 	double a0 = ((rnd() * pi) / 6) * a.dir + a.ang;
 	for (int i = 0; i < tl; i++) {
@@ -165,15 +164,29 @@ void bark(Painter& p, double x, double y, double wid, double ang) {
 	stroke(p, brklist, sa, [fr](double x) { return std::sin((x + fr) * pi * 3); });
 }
 
-void barkify(Painter& p, double x, double y, std::pair<Pts, Pts>& tr) {
+// Bark texture along a branch ribbon. `xof`/`yof` shift the branch points
+// before they are consumed (side branches bake in their attachment point
+// here instead of handing in a pre-shifted copy). `write_back` mirrors the
+// original JS behavior where the jittered row-final point leaks back into
+// the caller's outline points - kept only for the main trunk.
+void barkify(
+	Painter& p,
+	double x,
+	double y,
+	std::pair<Pts, Pts>& tr,
+	double xof = 0,
+	double yof = 0,
+	bool write_back = true) {
 	const Pts& tr0 = tr.first;
 	const Pts& tr1 = tr.second;
+	auto ptx = [&](const Pt& v) { return v[0] + xof; };
+	auto pty = [&](const Pt& v) { return v[1] + yof; };
 	for (size_t i = 2; i + 1 < tr0.size(); i++) {
-		double a0 = std::atan2(tr0[i][1] - tr0[i - 1][1], tr0[i][0] - tr0[i - 1][0]);
-		double a1 = std::atan2(tr1[i][1] - tr1[i - 1][1], tr1[i][0] - tr1[i - 1][0]);
+		double a0 = std::atan2(pty(tr0[i]) - pty(tr0[i - 1]), ptx(tr0[i]) - ptx(tr0[i - 1]));
+		double a1 = std::atan2(pty(tr1[i]) - pty(tr1[i - 1]), ptx(tr1[i]) - ptx(tr1[i - 1]));
 		double pp = rnd();
-		double nx = std::lerp(tr0[i][0], tr1[i][0], pp);
-		double ny = std::lerp(tr0[i][1], tr1[i][1], pp);
+		double nx = std::lerp(ptx(tr0[i]), ptx(tr1[i]), pp);
+		double ny = std::lerp(pty(tr0[i]), pty(tr1[i]), pp);
 		if (rnd() < 0.2) {
 			BArg ba;
 			ba.noi = 1;
@@ -189,12 +202,12 @@ void barkify(Painter& p, double x, double y, std::pair<Pts, Pts>& tr) {
 			double jl = rnd() * 2 + 2;
 			double xya[3];
 			if (rnd() < 0.5) {
-				xya[0] = tr0[i][0];
-				xya[1] = tr0[i][1];
+				xya[0] = ptx(tr0[i]);
+				xya[1] = pty(tr0[i]);
 				xya[2] = a0;
 			} else {
-				xya[0] = tr1[i][0];
-				xya[1] = tr1[i][1];
+				xya[0] = ptx(tr1[i]);
+				xya[1] = pty(tr1[i]);
 				xya[2] = a1;
 			}
 			for (double j = 0; j < jl; j++) {
@@ -212,11 +225,13 @@ void barkify(Painter& p, double x, double y, std::pair<Pts, Pts>& tr) {
 		}
 	}
 
-	Pts trflist = tr0;
-	trflist.insert(trflist.end(), tr1.rbegin(), tr1.rend());
+	Pts trflist;
+	trflist.reserve(tr0.size() + tr1.size());
+	for (const auto& v : tr0)
+		trflist.push_back({ptx(v), pty(v)});
+	for (auto it = tr1.rbegin(); it != tr1.rend(); ++it)
+		trflist.push_back({ptx(*it), pty(*it)});
 
-	// JS quirk: div() returns the last point by reference, and the jitter loop
-	// below mutates it in place - which permanently alters the caller's points.
 	std::vector<Pts> rglist;
 	std::vector<int> lastSrc;
 	rglist.push_back({});
@@ -236,8 +251,8 @@ void barkify(Painter& p, double x, double y, std::pair<Pts, Pts>& tr) {
 			divRow[j][0] += (nse((double)i, j * 0.1, 1) - 0.5) * (15 + 5 * randGaussian());
 			divRow[j][1] += (nse((double)i, j * 0.1, 2) - 0.5) * (15 + 5 * randGaussian());
 		}
-		// write back the shared last point into the caller's tr0/tr1
-		if (lastSrc[i] >= 0 && !divRow.empty()) {
+		// the jittered row-final point leaks back into the caller's points
+		if (write_back && lastSrc[i] >= 0 && !divRow.empty()) {
 			int k = lastSrc[i];
 			if (k < (int)tr0.size()) {
 				tr.first[k] = divRow.back();
@@ -323,17 +338,9 @@ void Tree::tree04(Painter& p, double x, double y, double hei, double wid, const 
 			auto br = branch(BranchArg{.hei = hei * (rnd() + 1) * 0.3, .wid = wid * 0.5, .ang = ba});
 			br.first.erase(br.first.begin());
 			br.second.erase(br.second.begin());
-			// JS keeps brlist raw; barkify gets an offset COPY (.map(foff))
-			auto brCopy = br;
-			for (auto& v : brCopy.first) {
-				v[0] += trlist[i][0];
-				v[1] += trlist[i][1];
-			}
-			for (auto& v : brCopy.second) {
-				v[0] += trlist[i][0];
-				v[1] += trlist[i][1];
-			}
-			barkify(tx, x, y, brCopy);
+			// side branch: bake the attachment point into the barkify call;
+			// the outline leak (write_back) only hits the main trunk
+			barkify(tx, x, y, br, trlist[i][0], trlist[i][1], false);
 
 			for (size_t j = 0; j < br.first.size(); j++) {
 				if (rnd() < 0.2 || j == br.first.size() - 1) {
@@ -388,7 +395,7 @@ void Tree::tree05(Painter& p, double x, double y, double hei, double wid, const 
 				branch(BranchArg{.hei = hei * (0.3 * pp - rnd() * 0.05), .wid = wid * 0.5, .ang = ba, .ben = 0.5});
 			br.first.erase(br.first.begin());
 			br.second.erase(br.second.begin());
-			// JS: //txcanv += barkify(...) - side-branch barkify is COMMENTED OUT
+			// (side-branch barkify intentionally omitted, as in the original)
 
 			for (size_t j = 0; j < br.first.size(); j++) {
 				if (j % 20 == 0 || j == br.first.size() - 1) {

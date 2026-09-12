@@ -177,7 +177,7 @@ void Man::man(Painter& p, double xoff, double yoff, const ManArg& a) {
 	auto cloth = [&](const Pts& plist, const auto& fun) {
 		Pts tlist = bezier_mid_hull(plist, 2);
 		auto [tlist1, tlist2] = expand(tlist, fun);
-		// JS: poly(tlist1.concat(tlist2.reverse())...) - reverse() mutates tlist2!
+		// the second edge runs back-to-front to close the limb outline
 		std::reverse(tlist2.begin(), tlist2.end());
 		Pts poly1;
 		poly1.reserve(tlist1.size() + tlist2.size());
