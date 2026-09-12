@@ -1,5 +1,7 @@
 #include "core/noise.h"
 #include "core/rng.h"
+#include "core/util.h"
+#include <algorithm>
 #include <cmath>
 #include <cstdint>
 
@@ -14,11 +16,10 @@ void Noise::ensure() {
 	if (!perlin.empty())
 		return;
 	perlin.assign(SIZE + 1, 0.0);
-	for (int i = 0; i < SIZE + 1; i++)
-		perlin[i] = rnd();
+	std::ranges::generate(perlin, [] { return rnd(); });
 }
 
-static double scaledCosine(double i) { return 0.5 * (1.0 - std::cos(i * M_PI)); }
+static double scaledCosine(double i) { return 0.5 * (1.0 - std::cos(i * pi)); }
 
 double Noise::noise(double x, double y, double z) {
 	ensure();
@@ -95,10 +96,10 @@ void Noise::noiseSeed(double seed) {
 	const double m = 4294967296.0, a = 1664525.0, c = 1013904223.0;
 	double z = std::fmod(std::fabs(seed), m);
 	perlin.assign(SIZE + 1, 0.0);
-	for (int i = 0; i < SIZE + 1; i++) {
+	std::ranges::generate(perlin, [&] {
 		z = std::fmod(a * z + c, m);
-		perlin[i] = z / m;
-	}
+		return z / m;
+	});
 }
 
 } // namespace ss

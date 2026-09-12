@@ -6,6 +6,7 @@
 #include "gen/tree.h"
 #include <algorithm>
 #include <cmath>
+#include <format>
 
 namespace ss {
 
@@ -33,10 +34,10 @@ void foot(Painter& p, const std::vector<Pts>& ptlist, double xof, double yof) {
 			std::reverse(ftlist[ftlist.size() - 1].begin(), ftlist[ftlist.size() - 1].end());
 			for (int j = 0; j < (int)span; j++) {
 				double pp = j / span;
-				double x1 = ptlist[i][0][0] * (1 - pp) + ptlist[ni][0][0] * pp;
-				double y1 = ptlist[i][0][1] * (1 - pp) + ptlist[ni][0][1] * pp;
-				double x2 = ptlist[i][ptlist[i].size() - 1][0] * (1 - pp) + ptlist[ni][ptlist[i].size() - 1][0] * pp;
-				double y2 = ptlist[i][ptlist[i].size() - 1][1] * (1 - pp) + ptlist[ni][ptlist[i].size() - 1][1] * pp;
+				double x1 = std::lerp(ptlist[i][0][0], ptlist[ni][0][0], pp);
+				double y1 = std::lerp(ptlist[i][0][1], ptlist[ni][0][1], pp);
+				double x2 = std::lerp(ptlist[i][ptlist[i].size() - 1][0], ptlist[ni][ptlist[i].size() - 1][0], pp);
+				double y2 = std::lerp(ptlist[i][ptlist[i].size() - 1][1], ptlist[ni][ptlist[i].size() - 1][1], pp);
 				double vib = -1.7 * (pp - 1) * std::pow(pp, 1.0 / 5);
 				y1 += vib * 5 + nse(xof * 0.05, (double)i) * 5;
 				y2 += vib * 5 + nse(xof * 0.05, (double)i) * 5;
@@ -50,12 +51,9 @@ void foot(Painter& p, const std::vector<Pts>& ptlist, double xof, double yof) {
 	}
 	for (const auto& row : ftlist) {
 		SArg sa;
-		sa.col = "rgba(100,100,100," + toFixed(0.1 + rnd() * 0.1, 3) + ")";
+		sa.col = Color{100, 100, 100, 0.1 + rnd() * 0.1}.rgba();
 		sa.wid = 1;
-		Pts shifted;
-		for (const auto& v : row)
-			shifted.push_back({v[0] + xof, v[1] + yof});
-		stroke(p, shifted, sa);
+		stroke(p, offset(row, xof, yof), sa);
 	}
 }
 
@@ -78,11 +76,11 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 		hoff += (rnd() * yoff) / 100;
 		Pts row;
 		for (int i = 0; i < reso1; i++) {
-			double x = ((double)i / reso1 - 0.5) * PI;
+			double x = ((double)i / reso1 - 0.5) * pi;
 			double y = std::cos(x);
 			y *= nse(x + 10, j * 0.15, seed);
 			double pp = 1 - (double)j / reso0;
-			row.push_back({(x / PI) * w * pp, -y * h * pp + hoff});
+			row.push_back({(x / pi) * w * pp, -y * h * pp + hoff});
 		}
 		ptlist.push_back(std::move(row));
 	}
@@ -108,7 +106,7 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 	// RIM
 	vegetate(
 		[&](double x, double y) {
-			std::string col = "rgba(100,100,100," + toFixed(nse(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.5, 3) + ")";
+			Color col{100, 100, 100, nse(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.5};
 			Tree::tree02(p, x + xoff, y + yoff - 5, 16, 8, 2, col, 0.5);
 		},
 		[&](int i, int j) {
@@ -128,10 +126,7 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 		sa.col = "rgba(100,100,100,0.3)";
 		sa.noi = 1;
 		sa.wid = 3;
-		Pts shifted;
-		for (const auto& v : ptlist[0])
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(ptlist[0], xoff, yoff), sa);
 	}
 
 	foot(p, ptlist, xoff, yoff);
@@ -150,7 +145,7 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 	// TOP
 	vegetate(
 		[&](double x, double y) {
-			std::string col = "rgba(100,100,100," + toFixed(nse(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.5, 3) + ")";
+			Color col{100, 100, 100, nse(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.5};
 			Tree::tree02(p, x + xoff, y + yoff, 16, 8, 5, col, 0.5);
 		},
 		[&](int i, int j) {
@@ -165,7 +160,7 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 			[&](double x, double y) {
 				double ht = ((h + y) / h) * 70;
 				ht = ht * 0.3 + rnd() * ht * 0.7;
-				std::string col = "rgba(100,100,100," + toFixed(nse(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.3, 3) + ")";
+				Color col{100, 100, 100, nse(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.3};
 				Tree::tree01(p, x + xoff, y + yoff, ht, rnd() * 3 + 1, col, 0.5);
 			},
 			[&](int i, int j) {
@@ -193,7 +188,7 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 				ht = ht * 0.5 + rnd() * ht * 0.5;
 				double bc = rnd() * 0.1;
 				double bp = 1;
-				std::string col = "rgba(100,100,100," + toFixed(nse(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.3, 3) + ")";
+				Color col{100, 100, 100, nse(0.01 * x, 0.01 * y) * 0.5 * 0.3 + 0.3};
 				Tree::tree03(
 					p, x + xoff, y + yoff, ht, 5, [bc, bp](double xx) { return std::pow(xx * bc, bp); }, col, 0.5);
 			},
@@ -241,7 +236,7 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 	vegetate(
 		[&](double x, double y) { Arch::transmissionTower01(p, x + xoff, y + yoff, seed); },
 		[&](int i, int j) {
-			double ns = nse(i * 0.2, j * 0.05, seed + 20 * PI);
+			double ns = nse(i * 0.2, j * 0.05, seed + 20 * pi);
 			return i % 2 == 0 && (j == 1 || j == (int)ptlist[i].size() - 2) && ns * ns * ns * ns < 0.002;
 		},
 		[](const Pts&, int) { return true; });
@@ -279,9 +274,9 @@ void flatDec(Painter& p, double xoff, double yoff, double xmin, double xmax, dou
 		double xr = xoff + normRand(xmin, xmax);
 		double yr = yoff + (ymin + ymax) / 2 + normRand(-5, 5) + 20;
 		for (double k = 0; k < 2 + rnd() * 3; k++) {
-			double tx = xr + std::min(std::max(normRand(-30, 30), xmin), xmax);
+			double tx = xr + std::clamp(normRand(-30, 30), xmin, xmax);
 			double th = 60 + rnd() * 40;
-			Tree::tree08(p, tx, yr, th, 1, "rgba(100,100,100,0.5)", 0.5);
+			Tree::tree08(p, tx, yr, th, 1, {}, 0.5);
 		}
 	}
 
@@ -300,13 +295,13 @@ void flatDec(Painter& p, double xoff, double yoff, double xmin, double xmax, dou
 	if (tt == 1) {
 		double pmin = rnd() * 0.5;
 		double pmax = rnd() * 0.5 + 0.5;
-		double x0 = xmin * (1 - pmin) + xmax * pmin;
-		double x1 = xmin * (1 - pmax) + xmax * pmax;
+		double x0 = std::lerp(xmin, xmax, pmin);
+		double x1 = std::lerp(xmin, xmax, pmax);
 		for (double i = x0; i < x1; i += 30) {
 			{
 				double tx = xoff + i + 20 * normRand(-1, 1);
 				double th = 100 + rnd() * 200;
-				Tree::tree05(p, tx, yoff + (ymin + ymax) / 2 + 20, th, 5, "rgba(100,100,100,0.5)", 0.5);
+				Tree::tree05(p, tx, yoff + (ymin + ymax) / 2 + 20, th, 5, {}, 0.5);
 			}
 		}
 		for (double j = 0; j < rnd() * 4; j++) {
@@ -323,10 +318,10 @@ void flatDec(Painter& p, double xoff, double yoff, double xmin, double xmax, dou
 		for (int i = 0; i < (int)randChoice<double>({1, 1, 1, 1, 2, 2, 3}); i++) {
 			double xr = normRand(xmin, xmax);
 			double yr = (ymin + ymax) / 2;
-			Tree::tree04(p, xoff + xr, yoff + yr + 20, 300, 6, "rgba(100,100,100,0.5)", 0.5);
+			Tree::tree04(p, xoff + xr, yoff + yr + 20, 300, 6, {}, 0.5);
 			for (double j = 0; j < rnd() * 2; j++) {
 				{
-					double rx = xoff + std::max(xmin, std::min(xmax, xr + normRand(-50, 50)));
+					double rx = xoff + std::clamp(xr + normRand(-50, 50), xmin, xmax);
 					double ry = yoff + yr + normRand(-5, 5) + 20;
 					double rs = j * i * rnd() * 100;
 					double rw = 50 + rnd() * 20;
@@ -340,20 +335,20 @@ void flatDec(Painter& p, double xoff, double yoff, double xmin, double xmax, dou
 			{
 				double tx = xoff + normRand(xmin, xmax);
 				double th = 60 + rnd() * 60;
-				Tree::tree06(p, tx, yoff + (ymin + ymax) / 2, th, 6, "rgba(100,100,100,0.5)", 0.5);
+				Tree::tree06(p, tx, yoff + (ymin + ymax) / 2, th, 6, {}, 0.5);
 			}
 		}
 	} else if (tt == 4) {
 		double pmin = rnd() * 0.5;
 		double pmax = rnd() * 0.5 + 0.5;
-		double x0 = xmin * (1 - pmin) + xmax * pmin;
-		double x1 = xmin * (1 - pmax) + xmax * pmax;
+		double x0 = std::lerp(xmin, xmax, pmin);
+		double x1 = std::lerp(xmin, xmax, pmax);
 		for (double i = x0; i < x1; i += 20) {
 			{
 				double tx = xoff + i + 20 * normRand(-1, 1);
 				double ty = yoff + (ymin + ymax) / 2 + normRand(-1, 1) + 0;
 				double th = normRand(40, 80);
-				Tree::tree07(p, tx, ty, th, 4, {}, "rgba(100,100,100,1)", 0.5);
+				Tree::tree07(p, tx, ty, th, 4, {}, {100, 100, 100, 1.0}, 0.5);
 			}
 		}
 	}
@@ -362,7 +357,7 @@ void flatDec(Painter& p, double xoff, double yoff, double xmin, double xmax, dou
 		{
 			double tx = xoff + normRand(xmin, xmax);
 			double ty = yoff + normRand(ymin, ymax);
-			Tree::tree02(p, tx, ty, 16, 8, 5, "rgba(100,100,100,0.5)", 0.5);
+			Tree::tree02(p, tx, ty, 16, 8, 5, {}, 0.5);
 		}
 	}
 
@@ -395,11 +390,11 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 		Pts row;
 		Pts frow;
 		for (int i = 0; i < reso1; i++) {
-			double x = ((double)i / reso1 - 0.5) * PI;
+			double x = ((double)i / reso1 - 0.5) * pi;
 			double y = std::cos(x * 2) + 1;
 			y *= nse(x + 10, j * 0.1, seed);
 			double pp = 1 - ((double)j / reso0) * 0.6;
-			double nx = (x / PI) * wid * pp;
+			double nx = (x / pi) * wid * pp;
 			double ny = -y * hei * pp + hoff;
 			double h = 100;
 			if (ny < -h * cho + hoff) {
@@ -427,10 +422,7 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 		sa.col = "rgba(100,100,100,0.3)";
 		sa.noi = 1;
 		sa.wid = 3;
-		Pts shifted;
-		for (const auto& v : ptlist[0])
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(ptlist[0], xoff, yoff), sa);
 	}
 
 	{
@@ -472,8 +464,8 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 	}
 
 	const double d = 5;
-	grlist1 = div(grlist1, d);
-	grlist2 = div(grlist2, d);
+	grlist1 = subdivide(grlist1, d);
+	grlist2 = subdivide(grlist2, d);
 
 	Pts grlist = grlist1;
 	std::reverse(grlist.begin(), grlist.end());
@@ -490,20 +482,14 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 		SArg sa;
 		sa.wid = 3;
 		sa.col = "rgba(100,100,100,0.2)";
-		Pts shifted;
-		for (const auto& v : grlist)
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(grlist, xoff, yoff), sa);
 	}
 
-	double xmin = grlist[0][0], xmax = grlist[0][0];
-	double ymin = grlist[0][1], ymax = grlist[0][1];
-	for (const auto& pt : grlist) {
-		xmin = std::min(xmin, pt[0]);
-		xmax = std::max(xmax, pt[0]);
-		ymin = std::min(ymin, pt[1]);
-		ymax = std::max(ymax, pt[1]);
-	}
+	auto [xminmax, yminmax] = std::pair{
+		std::ranges::minmax(grlist, {}, [](const Pt& p) { return p[0]; }),
+		std::ranges::minmax(grlist, {}, [](const Pt& p) { return p[1]; })};
+	double xmin = xminmax.min[0], xmax = xminmax.max[0];
+	double ymin = yminmax.min[1], ymax = yminmax.max[1];
 
 	flatDec(p, xoff, yoff, xmin, xmax, ymin, ymax);
 }
@@ -520,27 +506,27 @@ void Mount::distMount(Painter& p, double xoff, double yoff, double seed, const D
 		for (int j = 0; j < seg + 1; j++) {
 			double k = i * seg + j;
 			row.push_back(
-				{xoff + k * span, yoff - hei * nse(k * 0.05, seed) * std::pow(std::sin((PI * k) / (len / span)), 0.5)});
+				{xoff + k * span, yoff - hei * nse(k * 0.05, seed) * std::pow(std::sin((pi * k) / (len / span)), 0.5)});
 		}
 		for (int j = 0; j < seg / 2.0 + 1; j++) {
 			double k = i * seg + j * 2;
 			row.insert(
 				row.begin(),
-				{xoff + k * span, yoff + 24 * nse(k * 0.05, 2, seed) * std::pow(std::sin((PI * k) / (len / span)), 1)});
+				{xoff + k * span, yoff + 24 * nse(k * 0.05, 2, seed) * std::pow(std::sin((pi * k) / (len / span)), 1)});
 		}
 		ptlist.push_back(std::move(row));
 	}
 	for (const auto& row : ptlist) {
 		auto getCol = [&](double x, double y) {
 			int c = (int)(nse(x * 0.02, y * 0.02, yoff) * 55 + 200);
-			return "rgb(" + std::to_string(c) + "," + std::to_string(c) + "," + std::to_string(c) + ")";
+			return std::format("rgb({},{},{})", c, c, c);
 		};
 		std::string col = getCol(row[row.size() - 1][0], row[row.size() - 1][1]);
 		p.poly(row, PArg{.fil = col, .str = "none", .wid = 1});
 
 		auto T = PolyTools::triangulate(row, TriArgs{.area = 100, .convex = true, .optimize = false});
 		for (const auto& tri : T) {
-			Pt m = PolyTools::midPt(tri);
+			Pt m = PolyTools::centroid(tri);
 			std::string co = getCol(m[0], m[1]);
 			p.poly(tri, PArg{.fil = co, .str = co, .wid = 1});
 		}
@@ -565,15 +551,15 @@ void Mount::rock(
 		for (int j = 0; j < reso1; j++) {
 			nslist.push_back(nse(i, j * 0.2, seed));
 		}
-		loopNoise(nslist);
+		seamless_noise(nslist);
 		for (int j = 0; j < reso1; j++) {
-			double a = ((double)j / reso1) * PI * 2 - PI / 2;
+			double a = ((double)j / reso1) * pi * 2 - pi / 2;
 			double l = (wid * hei) / std::sqrt(std::pow(hei * std::cos(a), 2) + std::pow(wid * std::sin(a), 2));
 			l *= 0.7 + 0.3 * nslist[j];
 			double pp = 1 - (double)i / reso0;
 			double nx = std::cos(a) * l * pp;
 			double ny = -std::sin(a) * l * pp;
-			if (PI < a || a < 0) {
+			if (pi < a || a < 0) {
 				ny *= 0.2;
 			}
 			ny += hei * ((double)i / reso0) * 0.2;
@@ -591,10 +577,7 @@ void Mount::rock(
 		sa.col = "rgba(100,100,100,0.3)";
 		sa.noi = 1;
 		sa.wid = 3;
-		Pts shifted;
-		for (const auto& v : ptlist[0])
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(ptlist[0], xoff, yoff), sa);
 	}
 
 	{
@@ -604,7 +587,7 @@ void Mount::rock(
 		ta.tex = tex;
 		ta.wid = 3;
 		ta.sha = sha;
-		ta.col = [](double) { return "rgba(180,180,180," + toFixed(0.3 + rnd() * 0.3, 3) + ")"; };
+		ta.col = [](double) { return Color{180, 180, 180, 0.3 + rnd() * 0.3}.rgba(); };
 		ta.dis = []() {
 			if (rnd() > 0.5)
 				return 0.15 + 0.15 * rnd();

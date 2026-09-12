@@ -1,5 +1,5 @@
 #include "draw/painter.h"
-#include <cstdio>
+#include <format>
 
 namespace ss {
 
@@ -37,40 +37,37 @@ std::string Painter::toSvg() const {
 	std::string s;
 	size_t est = 0;
 	for (const auto& op : ops_)
-		est += op.pts.size() * 16 + 64;
+		est += op.pts.size() * 18 + 64;
 	s.reserve(est);
 	for (const auto& op : ops_) {
 		if (op.kind == 0) {
 			s += "<polyline points='";
 			for (const auto& p : op.pts) {
-				s += " ";
-				s += toFixed(p[0] + op.xof, 1);
-				s += ",";
-				s += toFixed(p[1] + op.yof, 1);
+				s += ' ';
+				appendFixed(s, p[0] + op.xof, 1);
+				s += ',';
+				appendFixed(s, p[1] + op.yof, 1);
 			}
 			s += "' style='fill:";
 			s += op.fil;
 			s += ";stroke:";
 			s += op.str;
 			s += ";stroke-width:";
-			s += fmtNum(op.wid);
+			appendNum(s, op.wid);
 			s += "'/>";
 		} else {
-			char buf[512];
-			std::snprintf(
-				buf,
-				sizeof buf,
-				"<text font-size='%s' font-family='%s' style='fill:%s' "
-				"text-anchor='middle' transform='translate(%s,%s) "
-				"rotate(%s)'>%s</text>",
-				fmtNum(op.fontSize).c_str(),
-				op.fontFamily.c_str(),
-				op.fill.c_str(),
-				fmtNum(op.x).c_str(),
-				fmtNum(op.y).c_str(),
-				fmtNum(op.rot).c_str(),
-				op.content.c_str());
-			s += buf;
+			std::format_to(
+				std::back_inserter(s),
+				"<text font-size='{}' font-family='{}' style='fill:{}' "
+				"text-anchor='middle' transform='translate({},{}) "
+				"rotate({})'>{}</text>",
+				op.fontSize,
+				op.fontFamily,
+				op.fill,
+				op.x,
+				op.y,
+				op.rot,
+				op.content);
 		}
 	}
 	return s;

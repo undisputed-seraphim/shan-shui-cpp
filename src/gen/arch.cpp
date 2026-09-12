@@ -49,8 +49,8 @@ void hut(Painter& p, double xoff, double yoff, double hei = 40, double wid = 180
 	ta.tex = tex;
 	ta.wid = 1;
 	ta.len = 0.25;
-	ta.col = [](double) { return "rgba(120,120,120," + toFixed(0.3 + rnd() * 0.3, 3) + ")"; };
-	ta.dis = []() { return wtrand([](double a) { return a * a; }); };
+	ta.col = [](double) { return Color{120, 120, 120, 0.3 + rnd() * 0.3}.rgba(); };
+	ta.dis = []() { return rejection_sample([](double a) { return a * a; }); };
 	ta.noi = [](double) { return 5.0; };
 	texture(p, ptlist, ta);
 }
@@ -70,19 +70,19 @@ void box(Painter& p, double xoff, double yoff, const BoxArg& a) {
 	double mid = -a.wid * 0.5 + a.wid * a.rot;
 	double bmid = -a.wid * 0.5 + a.wid * (1 - a.rot);
 	std::vector<Pts> ptlist;
-	ptlist.push_back(div({{-a.wid * 0.5, -a.hei}, {-a.wid * 0.5, 0}}, 5));
-	ptlist.push_back(div({{a.wid * 0.5, -a.hei}, {a.wid * 0.5, 0}}, 5));
+	ptlist.push_back(subdivide({{-a.wid * 0.5, -a.hei}, {-a.wid * 0.5, 0}}, 5));
+	ptlist.push_back(subdivide({{a.wid * 0.5, -a.hei}, {a.wid * 0.5, 0}}, 5));
 	if (a.bot) {
-		ptlist.push_back(div({{-a.wid * 0.5, 0}, {mid, a.per}}, 5));
-		ptlist.push_back(div({{a.wid * 0.5, 0}, {mid, a.per}}, 5));
+		ptlist.push_back(subdivide({{-a.wid * 0.5, 0}, {mid, a.per}}, 5));
+		ptlist.push_back(subdivide({{a.wid * 0.5, 0}, {mid, a.per}}, 5));
 	}
-	ptlist.push_back(div({{mid, -a.hei}, {mid, a.per}}, 5));
+	ptlist.push_back(subdivide({{mid, -a.hei}, {mid, a.per}}, 5));
 	if (a.tra) {
 		if (a.bot) {
-			ptlist.push_back(div({{-a.wid * 0.5, 0}, {bmid, -a.per}}, 5));
-			ptlist.push_back(div({{a.wid * 0.5, 0}, {bmid, -a.per}}, 5));
+			ptlist.push_back(subdivide({{-a.wid * 0.5, 0}, {bmid, -a.per}}, 5));
+			ptlist.push_back(subdivide({{a.wid * 0.5, 0}, {bmid, -a.per}}, 5));
 		}
-		ptlist.push_back(div({{bmid, -a.hei}, {bmid, -a.per}}, 5));
+		ptlist.push_back(subdivide({{bmid, -a.hei}, {bmid, -a.per}}, 5));
 	}
 
 	double surf = (a.rot < 0.5) * 2 - 1;
@@ -107,10 +107,7 @@ void box(Painter& p, double xoff, double yoff, const BoxArg& a) {
 		sa.noi = 1;
 		sa.wid = a.wei;
 		sa.fun = [](double) { return 1.0; };
-		Pts shifted;
-		for (const auto& v : row)
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(row, xoff, yoff), sa);
 	}
 }
 
@@ -121,10 +118,10 @@ std::vector<Pts> deco(int style, const std::array<Pt, 4>& r, double hsp0, double
 	const Pt& pdl = r[2];
 	const Pt& pdr = r[3];
 	std::vector<Pts> plist;
-	Pts dl = div({pul, pdl}, vsp1);
-	Pts dr = div({pur, pdr}, vsp1);
-	Pts du = div({pul, pur}, hsp1);
-	Pts dd = div({pdl, pdr}, hsp1);
+	Pts dl = subdivide({pul, pdl}, vsp1);
+	Pts dr = subdivide({pur, pdr}, vsp1);
+	Pts du = subdivide({pul, pur}, hsp1);
+	Pts dd = subdivide({pdl, pdr}, hsp1);
 
 	if (style == 1) {
 		Pt mlu = du[(size_t)hsp0];
@@ -132,16 +129,16 @@ std::vector<Pts> deco(int style, const std::array<Pt, 4>& r, double hsp0, double
 		Pt mld = dd[(size_t)hsp0];
 		Pt mrd = dd[du.size() - 1 - (size_t)hsp0];
 		for (size_t i = (size_t)vsp0; i < dl.size() - (size_t)vsp0; i += (size_t)vsp0) {
-			Pt mml = div({mlu, mld}, vsp1)[i];
-			Pt mmr = div({mru, mrd}, vsp1)[i];
-			plist.push_back(div({mml, dl[i]}, 5));
-			plist.push_back(div({mmr, dr[i]}, 5));
+			Pt mml = subdivide({mlu, mld}, vsp1)[i];
+			Pt mmr = subdivide({mru, mrd}, vsp1)[i];
+			plist.push_back(subdivide({mml, dl[i]}, 5));
+			plist.push_back(subdivide({mmr, dr[i]}, 5));
 		}
-		plist.push_back(div({mlu, mld}, 5));
-		plist.push_back(div({mru, mrd}, 5));
+		plist.push_back(subdivide({mlu, mld}, 5));
+		plist.push_back(subdivide({mru, mrd}, 5));
 	} else if (style == 2) {
 		for (size_t i = (size_t)hsp0; i < du.size() - (size_t)hsp0; i += (size_t)hsp0) {
-			plist.push_back(div({du[i], dd[i]}, 5));
+			plist.push_back(subdivide({du[i], dd[i]}, 5));
 		}
 	} else if (style == 3) {
 		Pt mlu = du[(size_t)hsp0];
@@ -149,15 +146,15 @@ std::vector<Pts> deco(int style, const std::array<Pt, 4>& r, double hsp0, double
 		Pt mld = dd[(size_t)hsp0];
 		Pt mrd = dd[du.size() - 1 - (size_t)hsp0];
 		for (size_t i = (size_t)vsp0; i < dl.size() - (size_t)vsp0; i += (size_t)vsp0) {
-			Pt mml = div({mlu, mld}, vsp1)[i];
-			Pt mmr = div({mru, mrd}, vsp1)[i];
-			Pt mmu = div({mlu, mru}, vsp1)[i];
-			Pt mmd = div({mld, mrd}, vsp1)[i];
-			plist.push_back(div({mml, mmr}, 5));
-			plist.push_back(div({mmu, mmd}, 5));
+			Pt mml = subdivide({mlu, mld}, vsp1)[i];
+			Pt mmr = subdivide({mru, mrd}, vsp1)[i];
+			Pt mmu = subdivide({mlu, mru}, vsp1)[i];
+			Pt mmd = subdivide({mld, mrd}, vsp1)[i];
+			plist.push_back(subdivide({mml, mmr}, 5));
+			plist.push_back(subdivide({mmu, mmd}, 5));
 		}
-		plist.push_back(div({mlu, mld}, 5));
-		plist.push_back(div({mru, mrd}, 5));
+		plist.push_back(subdivide({mlu, mld}, 5));
+		plist.push_back(subdivide({mru, mrd}, 5));
 	}
 	return plist;
 }
@@ -174,20 +171,20 @@ void rail(Painter& p, double xoff, double yoff, double seed, const RailArg& a) {
 	double bmid = -a.wid * 0.5 + a.wid * (1 - a.rot);
 	std::vector<Pts> ptlist;
 	if (a.fro) {
-		ptlist.push_back(div({{-a.wid * 0.5, 0}, {mid, a.per}}, a.seg));
-		ptlist.push_back(div({{mid, a.per}, {a.wid * 0.5, 0}}, a.seg));
+		ptlist.push_back(subdivide({{-a.wid * 0.5, 0}, {mid, a.per}}, a.seg));
+		ptlist.push_back(subdivide({{mid, a.per}, {a.wid * 0.5, 0}}, a.seg));
 	}
 	if (a.tra) {
-		ptlist.push_back(div({{-a.wid * 0.5, 0}, {bmid, -a.per}}, a.seg));
-		ptlist.push_back(div({{bmid, -a.per}, {a.wid * 0.5, 0}}, a.seg));
+		ptlist.push_back(subdivide({{-a.wid * 0.5, 0}, {bmid, -a.per}}, a.seg));
+		ptlist.push_back(subdivide({{bmid, -a.per}, {a.wid * 0.5, 0}}, a.seg));
 	}
 	if (a.fro) {
-		ptlist.push_back(div({{-a.wid * 0.5, -a.hei}, {mid, -a.hei + a.per}}, a.seg));
-		ptlist.push_back(div({{mid, -a.hei + a.per}, {a.wid * 0.5, -a.hei}}, a.seg));
+		ptlist.push_back(subdivide({{-a.wid * 0.5, -a.hei}, {mid, -a.hei + a.per}}, a.seg));
+		ptlist.push_back(subdivide({{mid, -a.hei + a.per}, {a.wid * 0.5, -a.hei}}, a.seg));
 	}
 	if (a.tra) {
-		ptlist.push_back(div({{-a.wid * 0.5, -a.hei}, {bmid, -a.hei - a.per}}, a.seg));
-		ptlist.push_back(div({{bmid, -a.hei - a.per}, {a.wid * 0.5, -a.hei}}, a.seg));
+		ptlist.push_back(subdivide({{-a.wid * 0.5, -a.hei}, {bmid, -a.hei - a.per}}, a.seg));
+		ptlist.push_back(subdivide({{bmid, -a.hei - a.per}, {a.wid * 0.5, -a.hei}}, a.seg));
 	}
 	if (a.tra) {
 		int open = (int)std::floor(rnd() * ptlist.size());
@@ -200,7 +197,7 @@ void rail(Painter& p, double xoff, double yoff, double seed, const RailArg& a) {
 			ptlist[i][j][1] += (nse((double)i, j * 0.5, seed) - 0.5) * a.hei;
 			size_t ci = (ptlist.size() / 2 + i) % ptlist.size();
 			ptlist[ci][j % ptlist[ci].size()][1] += (nse(i + 0.5, j * 0.5, seed) - 0.5) * a.hei;
-			Pts ln = div({ptlist[i][j], ptlist[ci][j % ptlist[ci].size()]}, 2);
+			Pts ln = subdivide({ptlist[i][j], ptlist[ci][j % ptlist[ci].size()]}, 2);
 			ln[0][0] += (rnd() - 0.5) * a.hei * 0.5;
 			p.poly(ln, PArg{.xof = xoff, .yof = yoff, .fil = "none", .str = "rgba(100,100,100,0.5)", .wid = 2});
 		}
@@ -211,10 +208,7 @@ void rail(Painter& p, double xoff, double yoff, double seed, const RailArg& a) {
 		sa.noi = 0.5;
 		sa.wid = a.wei;
 		sa.fun = [](double) { return 1.0; };
-		Pts shifted;
-		for (const auto& v : row)
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(row, xoff, yoff), sa);
 	}
 }
 
@@ -233,19 +227,19 @@ void roof(Painter& p, double xoff, double yoff, const RoofArg& a) {
 	double quat = (mid + a.wid * 0.5) * 0.5 - mid;
 
 	std::vector<Pts> ptlist;
+	ptlist.push_back(subdivide(
+		opf(
+			{{-a.wid * 0.5 + quat, -a.hei - a.per / 2},
+			 {-a.wid * 0.5 + quat * 0.5, -a.hei / 2 - a.per / 4},
+			 {-a.wid * 0.5 - a.cor, 0}}),
+		5));
+	ptlist.push_back(subdivide(
+		opf({{mid + quat, -a.hei}, {(mid + quat + a.wid * 0.5) / 2, -a.hei / 2}, {a.wid * 0.5 + a.cor, 0}}), 5));
 	ptlist.push_back(
-		div(opf(
-				{{-a.wid * 0.5 + quat, -a.hei - a.per / 2},
-				 {-a.wid * 0.5 + quat * 0.5, -a.hei / 2 - a.per / 4},
-				 {-a.wid * 0.5 - a.cor, 0}}),
-			5));
-	ptlist.push_back(
-		div(opf({{mid + quat, -a.hei}, {(mid + quat + a.wid * 0.5) / 2, -a.hei / 2}, {a.wid * 0.5 + a.cor, 0}}), 5));
-	ptlist.push_back(
-		div(opf({{mid + quat, -a.hei}, {mid + quat / 2, -a.hei / 2 + a.per / 2}, {mid + a.cor, a.per}}), 5));
-	ptlist.push_back(div(opf({{-a.wid * 0.5 - a.cor, 0}, {mid + a.cor, a.per}}), 5));
-	ptlist.push_back(div(opf({{a.wid * 0.5 + a.cor, 0}, {mid + a.cor, a.per}}), 5));
-	ptlist.push_back(div(opf({{-a.wid * 0.5 + quat, -a.hei - a.per / 2}, {mid + quat, -a.hei}}), 5));
+		subdivide(opf({{mid + quat, -a.hei}, {mid + quat / 2, -a.hei / 2 + a.per / 2}, {mid + a.cor, a.per}}), 5));
+	ptlist.push_back(subdivide(opf({{-a.wid * 0.5 - a.cor, 0}, {mid + a.cor, a.per}}), 5));
+	ptlist.push_back(subdivide(opf({{a.wid * 0.5 + a.cor, 0}, {mid + a.cor, a.per}}), 5));
+	ptlist.push_back(subdivide(opf({{-a.wid * 0.5 + quat, -a.hei - a.per / 2}, {mid + quat, -a.hei}}), 5));
 
 	Pts polist = opf(
 		{{-a.wid * 0.5, 0},
@@ -261,19 +255,16 @@ void roof(Painter& p, double xoff, double yoff, const RoofArg& a) {
 		sa.noi = 1;
 		sa.wid = a.wei;
 		sa.fun = [](double) { return 1.0; };
-		Pts shifted;
-		for (const auto& v : row)
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(row, xoff, yoff), sa);
 	}
 
 	if (a.pla[0] == 1) {
 		Pts pp = opf({{mid + quat / 2, -a.hei / 2 + a.per / 2}, {-a.wid * 0.5 + quat * 0.5, -a.hei / 2 - a.per / 4}});
 		if (pp[0][0] > pp[1][0])
 			std::swap(pp[0], pp[1]);
-		Pt mp = PolyTools::midPt(pp);
+		Pt mp = PolyTools::centroid(pp);
 		double ang = std::atan2(pp[1][1] - pp[0][1], pp[1][0] - pp[0][0]);
-		double adeg = (ang * 180) / PI;
+		double adeg = (ang * 180) / pi;
 		TArg t;
 		t.fontSize = a.hei * 0.6;
 		t.x = mp[0] + xoff;
@@ -310,10 +301,7 @@ void pagroof(Painter& p, double xoff, double yoff, const PagroofArg& a) {
 		sa.noi = 1;
 		sa.wid = a.wei;
 		sa.fun = [](double) { return 1.0; };
-		Pts shifted;
-		for (const auto& v : div(row, 5))
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(subdivide(row, 5), xoff, yoff), sa);
 	}
 }
 
@@ -523,8 +511,8 @@ void Arch::boat01(Painter& p, double xoff, double yoff, double seed, double len,
 	Man::man(p, xoff + 20 * sca * dir, yoff, ma);
 
 	Pts plist1, plist2;
-	auto fun1 = [sca](double x) { return std::pow(std::sin(x * PI), 0.5) * 7 * sca; };
-	auto fun2 = [sca](double x) { return std::pow(std::sin(x * PI), 0.5) * 10 * sca; };
+	auto fun1 = [sca](double x) { return std::pow(std::sin(x * pi), 0.5) * 7 * sca; };
+	auto fun2 = [sca](double x) { return std::pow(std::sin(x * pi), 0.5) * 10 * sca; };
 	for (double i = 0; i < len * sca; i += 5 * sca) {
 		plist1.push_back({i * dir, fun1(i / len)});
 		plist2.push_back({i * dir, fun2(i / len)});
@@ -534,25 +522,18 @@ void Arch::boat01(Painter& p, double xoff, double yoff, double seed, double len,
 	p.poly(plist, PArg{.xof = xoff, .yof = yoff, .fil = "white"});
 	SArg sa;
 	sa.wid = 1;
-	sa.fun = [](double x) { return std::sin(x * PI * 2); };
+	sa.fun = [](double x) { return std::sin(x * pi * 2); };
 	sa.col = "rgba(100,100,100,0.4)";
-	Pts shifted;
-	for (const auto& v : plist)
-		shifted.push_back({xoff + v[0], yoff + v[1]});
-	stroke(p, shifted, sa);
+	stroke(p, offset(plist, xoff, yoff), sa);
 }
 
 void Arch::transmissionTower01(Painter& p, double xoff, double yoff, double seed, double hei, double wid) {
-	auto toGlobal = [&](const Pt& v) { return Pt{v[0] + xoff, v[1] + yoff}; };
 	auto quickstroke = [&](const Pts& pl) {
-		Pts shifted;
-		for (const auto& v : div(pl, 5))
-			shifted.push_back(toGlobal(v));
 		SArg sa;
 		sa.wid = 1;
 		sa.fun = [](double) { return 0.5; };
 		sa.col = "rgba(100,100,100,0.4)";
-		stroke(p, shifted, sa);
+		stroke(p, offset(subdivide(pl, 5), xoff, yoff), sa);
 	};
 
 	Pt p00 = {-wid * 0.05, -hei};
@@ -573,8 +554,8 @@ void Arch::transmissionTower01(Painter& p, double xoff, double yoff, double seed
 		quickstroke({{b[0] * wid, b[1] * hei}, {b[0] * wid, (b[1] + 0.1) * hei}});
 	}
 
-	Pts l10 = div({p00, p10, p20, p30}, 5);
-	Pts l11 = div({p01, p11, p21, p31}, 5);
+	Pts l10 = subdivide({p00, p10, p20, p30}, 5);
+	Pts l11 = subdivide({p01, p11, p21, p31}, 5);
 	for (size_t i = 0; i + 1 < l10.size(); i++) {
 		quickstroke({l10[i], l11[i + 1]});
 		quickstroke({l11[i], l10[i + 1]});

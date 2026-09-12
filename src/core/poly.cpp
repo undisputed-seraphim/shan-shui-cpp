@@ -46,15 +46,15 @@ static bool ptInPoly(const Pt& pt, const Pts& plist) {
 static bool lnInPoly(const Pt* ln, const Pts& plist) {
 	double ep = 0.01;
 	Pt lnc[2] = {
-		{ln[0][0] * (1 - ep) + ln[1][0] * ep, ln[0][1] * (1 - ep) + ln[1][1] * ep},
-		{ln[0][0] * ep + ln[1][0] * (1 - ep), ln[0][1] * ep + ln[1][1] * (1 - ep)}};
+		{std::lerp(ln[0][0], ln[1][0], ep), std::lerp(ln[0][1], ln[1][1], ep)},
+		{std::lerp(ln[1][0], ln[0][0], ep), std::lerp(ln[1][1], ln[0][1], ep)}};
 	for (size_t i = 0; i < plist.size(); i++) {
 		const Pt& np = plist[i != plist.size() - 1 ? i + 1 : 0];
 		Pt seg[2] = {plist[i], np};
 		if (intersect(lnc, seg))
 			return false;
 	}
-	Pt mid = PolyTools::midPt({ln[0], ln[1]});
+	Pt mid = PolyTools::centroid({ln[0], ln[1]});
 	if (!ptInPoly(mid, plist))
 		return false;
 	return true;
@@ -129,14 +129,14 @@ static std::vector<Pts> shatter(const Pts& plist, double a) {
 			ind = i;
 	size_t nind = (ind + 1) % plist.size();
 	size_t lind = (ind + 2) % plist.size();
-	Pt mid = PolyTools::midPt({plist[ind], plist[nind]});
+	Pt mid = PolyTools::centroid({plist[ind], plist[nind]});
 	auto r1 = shatter({plist[ind], mid, plist[lind]}, a);
 	auto r2 = shatter({plist[lind], plist[nind], mid}, a);
 	r1.insert(r1.end(), r2.begin(), r2.end());
 	return r1;
 }
 
-Pt PolyTools::midPt(const Pts& plist) {
+Pt PolyTools::centroid(const Pts& plist) {
 	Pt acc = {0, 0};
 	for (const auto& v : plist) {
 		acc[0] += v[0] / (double)plist.size();
@@ -145,7 +145,7 @@ Pt PolyTools::midPt(const Pts& plist) {
 	return acc;
 }
 
-Pt PolyTools::midPt(std::initializer_list<Pt> pts) {
+Pt PolyTools::centroid(std::initializer_list<Pt> pts) {
 	Pt acc = {0, 0};
 	for (const auto& v : pts) {
 		acc[0] += v[0] / (double)pts.size();

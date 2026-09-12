@@ -49,7 +49,7 @@ std::vector<Plan> mountplanner(Scene& sc, double xmin, double xmax) {
 	auto ns = [&](double x, double y) { return std::max(nse(x * samp) - 0.55, 0.0) * 2; };
 	auto nns = [&](double x) { return 1 - nse(x * samp); };
 	auto nnns = [&](double x, double y) { return std::max(nse(x * samp * 2, 2) - 0.55, 0.0) * 2; };
-	auto yr = [&](double x) { return nse(x * 0.01, PI); };
+	auto yr = [&](double x) { return nse(x * 0.01, pi); };
 	(void)nns;
 	(void)nnns;
 
@@ -163,7 +163,7 @@ void Scene::chunkloader(double vxmin, double vxmax) {
 			} else if (pl.tag == "flatmount") {
 				Painter sp;
 				Mount::FlatMountArg fa;
-				double fseed = 2 * rnd() * PI;
+				double fseed = 2 * rnd() * pi;
 				fa.wid = 600 + rnd() * 400;
 				fa.hei = 100;
 				fa.cho = 0.5 + rnd() * 0.2;

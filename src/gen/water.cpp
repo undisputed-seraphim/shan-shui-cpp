@@ -20,12 +20,9 @@ void water(Painter& p, double xoff, double yoff, double seed, double hei, double
 	}
 	for (size_t j = 1; j < ptlist.size(); j++) {
 		SArg sa;
-		sa.col = "rgba(100,100,100," + toFixed(0.3 + rnd() * 0.3, 3) + ")";
+		sa.col = Color{100, 100, 100, 0.3 + rnd() * 0.3}.rgba();
 		sa.wid = 1;
-		Pts shifted;
-		for (const auto& v : ptlist[j])
-			shifted.push_back({v[0] + xoff, v[1] + yoff});
-		stroke(p, shifted, sa);
+		stroke(p, offset(ptlist[j], xoff, yoff), sa);
 	}
 }
 

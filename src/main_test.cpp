@@ -24,26 +24,26 @@ int main() {
 	// --- PRNG stream for seed "123" (from ref_prng.txt) ---
 	{
 		Rng::inst().seed("123");
-		const char* expect[] = {
-			"0.563566544187486",
-			"0.321631826709592",
-			"0.265661911199784",
-			"0.977427078879056",
-			"0.717024806592673",
-			"0.017856904721004",
-			"0.305112297321373",
-			"0.429255656289695",
-			"0.576170941272075",
-			"0.628078658324792",
-			"0.461861817647186",
-			"0.649525784552932"};
+		const double expect[] = {
+			0.563566544187486,
+			0.321631826709592,
+			0.265661911199784,
+			0.977427078879056,
+			0.717024806592673,
+			0.017856904721004,
+			0.305112297321373,
+			0.429255656289695,
+			0.576170941272075,
+			0.628078658324792,
+			0.461861817647186,
+			0.649525784552932};
 		bool ok = true;
 		std::string got;
 		for (int i = 0; i < 12; i++) {
-			std::string v = toFixed(rnd(), 15);
-			if (v != expect[i]) {
+			double v = rnd();
+			if (std::fabs(v - expect[i]) > 1e-15) {
 				ok = false;
-				got += v + " ";
+				got += fmtNum(v) + " ";
 			}
 		}
 		check(ok, "PRNG stream matches JS for seed '123'" + (ok ? "" : " (got " + got + ")"));
@@ -53,22 +53,15 @@ int main() {
 	{
 		Rng::inst().seed("123");
 		Noise::inst().noise(1.0, 2.0, 3.0); // build table lazily
-		const char* expect[] = {
-			"0.528343635",
-			"0.379729339",
-			"0.352870176",
-			"0.455091527",
-			"0.423446516",
-			"0.424147296",
-			"0.673503669",
-			"0.591876120"};
+		const double expect[] = {
+			0.528343635, 0.379729339, 0.352870176, 0.455091527, 0.423446516, 0.424147296, 0.673503669, 0.591876120};
 		bool ok = true;
 		std::string got;
 		for (int i = 0; i < 8; i++) {
-			std::string v = toFixed(Noise::inst().noise(i * 0.5), 9);
-			if (v != expect[i]) {
+			double v = Noise::inst().noise(i * 0.5);
+			if (std::fabs(v - expect[i]) > 1e-9) {
 				ok = false;
-				got += v + " ";
+				got += fmtNum(v) + " ";
 			}
 		}
 		check(ok, "noise matches JS for seed '123'" + (ok ? "" : " (got " + got + ")"));

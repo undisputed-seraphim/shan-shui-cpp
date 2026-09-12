@@ -15,8 +15,8 @@ struct TriArgs {
 };
 
 struct PolyTools {
-	static Pt midPt(const Pts& plist);
-	static Pt midPt(std::initializer_list<Pt> pts);
+	static Pt centroid(const Pts& plist);
+	static Pt centroid(std::initializer_list<Pt> pts);
 	static std::vector<Pts> triangulate(const Pts& plist, const TriArgs& args);
 };
 
