@@ -26,15 +26,6 @@ void seamless_noise(std::vector<double>& nslist) {
 
 double normRand(double m, double M) { return remap(rnd(), 0, 1, m, M); }
 
-double rejection_sample(const std::function<double(double)>& func) {
-	for (;;) {
-		double x = rnd();
-		double y = rnd();
-		if (y < func(x))
-			return x;
-	}
-}
-
 double randGaussian() {
 	return rejection_sample([](double x) { return std::pow(e, -24 * std::pow(x - 0.5, 2)); }) * 2 - 1;
 }
@@ -45,7 +36,7 @@ Pts bezier_mid_hull(const Pts& P_, double w) {
 		P.insert(P.begin() + 1, PolyTools::centroid({P[0], P[1]}));
 	}
 	Pts plist;
-	plist.reserve((P.size() - 2) * 21);
+	plist.reserve((P.size() > 2 ? P.size() - 2 : 0) * 21);
 	for (size_t j = 0; j + 2 < P.size(); j++) {
 		Pt p0, p1, p2;
 		if (j == 0)

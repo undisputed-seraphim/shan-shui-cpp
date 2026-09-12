@@ -13,8 +13,8 @@ namespace ss {
 namespace {
 
 // Mount.foot - folds at the base of a mountain
-void foot(Painter& p, const std::vector<Pts>& ptlist, double xof, double yof) {
-	std::vector<Pts> ftlist;
+void foot(Painter& p, const ScratchPtsList& ptlist, double xof, double yof) {
+	ScratchPtsList ftlist;
 	const double span = 10;
 	int ni = 0;
 	for (size_t i = 0; i + 2 < ptlist.size(); i++) {
@@ -53,7 +53,9 @@ void foot(Painter& p, const std::vector<Pts>& ptlist, double xof, double yof) {
 		SArg sa;
 		sa.col = Color{100, 100, 100, 0.1 + rnd() * 0.1}.rgba();
 		sa.wid = 1;
-		stroke(p, offset(row, xof, yof), sa);
+		sa.xof = xof;
+		sa.yof = yof;
+		stroke(p, row, sa);
 	}
 }
 
@@ -66,15 +68,17 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 	bool veg = a.veg;
 	int ret = a.ret;
 
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
 	double h = hei;
 	double w = wid;
 	const int reso0 = 10, reso1 = 50;
+	ptlist.reserve(reso0);
 
 	double hoff = 0;
 	for (int j = 0; j < reso0; j++) {
 		hoff += (rnd() * yoff) / 100;
-		Pts row;
+		ScratchPts row;
+		row.reserve(reso1);
 		for (int i = 0; i < reso1; i++) {
 			double x = ((double)i / reso1 - 0.5) * pi;
 			double y = std::cos(x);
@@ -85,10 +89,9 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 		ptlist.push_back(std::move(row));
 	}
 
-	auto vegetate = [&](const std::function<void(double, double)>& treeFunc,
-						const std::function<bool(int, int)>& growthRule,
-						const std::function<bool(const Pts&, int)>& proofRule) {
+	auto vegetate = [&](const auto& treeFunc, const auto& growthRule, const auto& proofRule) {
 		Pts veglist;
+		veglist.reserve(ptlist.size() * ptlist[0].size());
 		for (size_t i = 0; i < ptlist.size(); i++) {
 			for (size_t j = 0; j < ptlist[i].size(); j++) {
 				if (growthRule((int)i, (int)j)) {
@@ -116,7 +119,7 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 		[](const Pts&, int) { return true; });
 
 	// WHITE BG
-	Pts bg = ptlist[0];
+	ScratchPts bg = ptlist[0];
 	bg.push_back({0, reso0 * 4});
 	p.poly(bg, PArg{.xof = xoff, .yof = yoff, .fil = "white", .str = "none"});
 
@@ -126,7 +129,9 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 		sa.col = "rgba(100,100,100,0.3)";
 		sa.noi = 1;
 		sa.wid = 3;
-		stroke(p, offset(ptlist[0], xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, ptlist[0], sa);
 	}
 
 	foot(p, ptlist, xoff, yoff);
@@ -137,8 +142,6 @@ void Mount::mountain(Painter& p, double xoff, double yoff, double seed, const Mo
 		ta.yof = yoff;
 		ta.tex = tex;
 		ta.sha = (double)randChoice<int>({0, 0, 0, 0, 5});
-		if (a.colFn)
-			ta.col = a.colFn;
 		texture(p, ptlist, ta);
 	}
 
@@ -381,14 +384,17 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 	int tex = a.tex;
 	double cho = a.cho;
 
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
 	const int reso0 = 5, reso1 = 50;
+	ptlist.reserve(reso0);
 	double hoff = 0;
-	std::vector<Pts> flat;
+	ScratchPtsList flat;
+	flat.reserve(reso0);
 	for (int j = 0; j < reso0; j++) {
 		hoff += (rnd() * yoff) / 100;
-		Pts row;
-		Pts frow;
+		ScratchPts row;
+		row.reserve(reso1);
+		ScratchPts frow;
 		for (int i = 0; i < reso1; i++) {
 			double x = ((double)i / reso1 - 0.5) * pi;
 			double y = std::cos(x * 2) + 1;
@@ -413,7 +419,7 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 		flat.push_back(std::move(frow));
 	}
 
-	Pts bg = ptlist[0];
+	ScratchPts bg = ptlist[0];
 	bg.push_back({0, reso0 * 4});
 	p.poly(bg, PArg{.xof = xoff, .yof = yoff, .fil = "white", .str = "none"});
 
@@ -422,7 +428,9 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 		sa.col = "rgba(100,100,100,0.3)";
 		sa.noi = 1;
 		sa.wid = 3;
-		stroke(p, offset(ptlist[0], xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, ptlist[0], sa);
 	}
 
 	{
@@ -431,15 +439,14 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 		ta.yof = yoff;
 		ta.tex = tex;
 		ta.wid = 2;
-		ta.dis = []() {
+		texture(p, ptlist, ta, {}, {}, []() {
 			if (rnd() > 0.5)
 				return 0.1 + 0.4 * rnd();
 			return 0.9 - 0.4 * rnd();
-		};
-		texture(p, ptlist, ta);
+		});
 	}
 
-	Pts grlist1, grlist2;
+	ScratchPts grlist1, grlist2;
 	for (size_t i = 0; i < flat.size(); i += 2) {
 		if (flat[i].size() >= 2) {
 			grlist1.push_back(flat[i][0]);
@@ -467,7 +474,7 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 	grlist1 = subdivide(grlist1, d);
 	grlist2 = subdivide(grlist2, d);
 
-	Pts grlist = grlist1;
+	ScratchPts grlist = grlist1;
 	std::reverse(grlist.begin(), grlist.end());
 	grlist.insert(grlist.end(), grlist2.begin(), grlist2.end());
 	grlist.push_back(grlist.front()); // JS: [grlist1[0]] aliases the first point
@@ -482,7 +489,9 @@ void Mount::flatMount(Painter& p, double xoff, double yoff, double seed, const F
 		SArg sa;
 		sa.wid = 3;
 		sa.col = "rgba(100,100,100,0.2)";
-		stroke(p, offset(grlist, xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, grlist, sa);
 	}
 
 	auto [xminmax, yminmax] = std::pair{
@@ -501,8 +510,10 @@ void Mount::distMount(Painter& p, double xoff, double yoff, double seed, const D
 
 	const double span = 10;
 	std::vector<Pts> ptlist;
+	ptlist.reserve((int)(len / span / seg));
 	for (int i = 0; i < (int)(len / span / seg); i++) {
 		Pts row;
+		row.reserve(seg + 1 + seg / 2 + 1);
 		for (int j = 0; j < seg + 1; j++) {
 			double k = i * seg + j;
 			row.push_back(
@@ -544,10 +555,13 @@ void Mount::rock(
 	int ret,
 	double sha) {
 	const int reso0 = 10, reso1 = 50;
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
+	ptlist.reserve(reso0);
 	for (int i = 0; i < reso0; i++) {
-		Pts row;
+		ScratchPts row;
+		row.reserve(reso1);
 		std::vector<double> nslist;
+		nslist.reserve(reso1);
 		for (int j = 0; j < reso1; j++) {
 			nslist.push_back(nse(i, j * 0.2, seed));
 		}
@@ -568,7 +582,7 @@ void Mount::rock(
 		ptlist.push_back(std::move(row));
 	}
 
-	Pts bg = ptlist[0];
+	ScratchPts bg = ptlist[0];
 	bg.push_back({0, 0});
 	p.poly(bg, PArg{.xof = xoff, .yof = yoff, .fil = "white", .str = "none"});
 
@@ -577,7 +591,9 @@ void Mount::rock(
 		sa.col = "rgba(100,100,100,0.3)";
 		sa.noi = 1;
 		sa.wid = 3;
-		stroke(p, offset(ptlist[0], xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, ptlist[0], sa);
 	}
 
 	{
@@ -587,13 +603,11 @@ void Mount::rock(
 		ta.tex = tex;
 		ta.wid = 3;
 		ta.sha = sha;
-		ta.col = [](double) { return Color{180, 180, 180, 0.3 + rnd() * 0.3}.rgba(); };
-		ta.dis = []() {
+		texture(p, ptlist, ta, {}, [](double) { return Color{180, 180, 180, 0.3 + rnd() * 0.3}.rgba(); }, []() {
 			if (rnd() > 0.5)
 				return 0.15 + 0.15 * rnd();
 			return 0.85 - 0.15 * rnd();
-		};
-		texture(p, ptlist, ta);
+		});
 	}
 	(void)ret;
 }

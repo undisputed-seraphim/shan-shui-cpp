@@ -20,6 +20,7 @@ std::pair<Pts, Pts> branch(const BranchArg& a) {
 	tlist.push_back({nx, ny});
 	double a0 = 0;
 	const int g = 3;
+	tlist.reserve(g + 1);
 	for (int i = 0; i < g; i++) {
 		a0 += (a.ben / 2 + (rnd() * a.ben) / 2) * randChoice<double>({-1.0, 1.0});
 		nx += (std::cos(a0) * a.hei) / g;
@@ -35,7 +36,9 @@ std::pair<Pts, Pts> branch(const BranchArg& a) {
 	}
 	Pts trlist1, trlist2;
 	double span = a.det;
-	double tl = ((double)tlist.size() - 1) * span; // JS: float, loop runs while i < tl
+	double tl = ((double)tlist.size() - 1) * span;
+	trlist1.reserve((int)tl + 1);
+	trlist2.reserve((int)tl + 1); // JS: float, loop runs while i < tl
 	double lx = 0, ly = 0;
 	for (int i = 0; i < tl; i++) {
 		const Pt& lastp = tlist[(size_t)std::floor(i / span)];
@@ -68,6 +71,7 @@ struct TwigArg {
 void twig(Painter& p, double tx, double ty, int dep, const TwigArg& a) {
 	Pts twlist;
 	const int tl = 10;
+	twlist.reserve(tl + 1);
 	double hs = rnd() * 0.5 + 0.5;
 	rnd(); // JS: randChoice([fun2]) consumes a draw even with a single element
 	// tfun = fun2 (always chosen from [fun2])
@@ -103,23 +107,22 @@ void twig(Painter& p, double tx, double ty, int dep, const TwigArg& a) {
 				ba.len = (15 + 12 * rnd()) * a.wid;
 				ba.ang = a.ang / 2 + pi / 2 + pi * 0.2 * (rnd() - 0.5);
 				ba.col = Color{100, 100, 100, 0.5 + dep * 0.2}.rgba();
-				ba.fun = [](double x) {
-					return x <= 1 ? std::pow(std::sin(x * pi) * x, 0.5)
-								  : -std::pow(std::sin((x - 2) * pi * (x - 2)), 0.5);
-				};
 				blob(
 					p,
 					nx + tx + std::cos(a.ang) * dj * a.wid,
 					ny + ty + (std::sin(a.ang) * dj - a.lea / (dep + 1)) * a.wid,
-					ba);
+					ba,
+					[](double x) {
+						return x <= 1 ? std::pow(std::sin(x * pi) * x, 0.5)
+									  : -std::pow(std::sin((x - 2) * pi * (x - 2)), 0.5);
+					});
 			}
 		}
 	}
 	SArg sa;
 	sa.wid = 1;
-	sa.fun = [](double x) { return std::cos((x * pi) / 2); };
 	sa.col = "rgba(100,100,100,0.5)";
-	stroke(p, twlist, sa);
+	stroke(p, twlist, sa, [](double x) { return std::cos((x * pi) / 2); });
 }
 
 // bark texture stroke
@@ -130,6 +133,7 @@ void bark(Painter& p, double x, double y, double wid, double ang) {
 	};
 	const double reso = 20.0;
 	std::vector<std::array<double, 2>> lalist;
+	lalist.reserve((size_t)reso + 1);
 	for (int i = 0; i < (int)reso + 1; i++) {
 		double pp = ((double)i / reso) * 2;
 		double xo = len / 2 - std::fabs(pp - 1) * len;
@@ -139,11 +143,13 @@ void bark(Painter& p, double x, double y, double wid, double ang) {
 		lalist.push_back({l, a2});
 	}
 	std::vector<double> nslist;
+	nslist.reserve((size_t)reso + 1);
 	double n0 = rnd() * 10;
 	for (int i = 0; i < (int)reso + 1; i++)
 		nslist.push_back(nse(i * 0.05, n0));
 	seamless_noise(nslist);
 	Pts brklist;
+	brklist.reserve((size_t)reso + 1);
 	for (size_t i = 0; i < lalist.size(); i++) {
 		double ns = nslist[i] * 0.5 + (1 - 0.5);
 		double nx = x + std::cos(lalist[i][1] + ang) * lalist[i][0] * ns;
@@ -156,8 +162,7 @@ void bark(Painter& p, double x, double y, double wid, double ang) {
 	sa.noi = 0;
 	sa.col = "rgba(100,100,100,0.4)";
 	sa.out = 0;
-	sa.fun = [fr](double x) { return std::sin((x + fr) * pi * 3); };
-	stroke(p, brklist, sa);
+	stroke(p, brklist, sa, [fr](double x) { return std::sin((x + fr) * pi * 3); });
 }
 
 void barkify(Painter& p, double x, double y, std::pair<Pts, Pts>& tr) {
@@ -226,7 +231,7 @@ void barkify(Painter& p, double x, double y, std::pair<Pts, Pts>& tr) {
 		}
 	}
 	for (size_t i = 0; i < rglist.size(); i++) {
-		Pts divRow = subdivide(rglist[i], 4);
+		ScratchPts divRow = subdivide(rglist[i], 4);
 		for (size_t j = 0; j < divRow.size(); j++) {
 			divRow[j][0] += (nse((double)i, j * 0.1, 1) - 0.5) * (15 + 5 * randGaussian());
 			divRow[j][1] += (nse((double)i, j * 0.1, 2) - 0.5) * (15 + 5 * randGaussian());
@@ -244,7 +249,9 @@ void barkify(Painter& p, double x, double y, std::pair<Pts, Pts>& tr) {
 		sa.wid = 1.5;
 		sa.col = "rgba(100,100,100,0.7)";
 		sa.out = 0;
-		stroke(p, offset(divRow, x, y), sa);
+		sa.xof = x;
+		sa.yof = y;
+		stroke(p, divRow, sa);
 	}
 }
 
@@ -287,58 +294,19 @@ void Tree::tree02(Painter& p, double x, double y, double hei, double wid, int cl
 		double by = y + randGaussian() * clu * 4;
 		BArg ba;
 		ba.ang = pi / 2;
-		ba.fun = [](double xx) {
-			return xx <= 1 ? std::pow(std::sin(xx * pi) * xx, 0.5) : -std::pow(std::sin((xx - 2) * pi * (xx - 2)), 0.5);
-		};
 		ba.wid = rnd() * wid * 0.75 + wid * 0.5;
 		ba.len = rnd() * hei * 0.75 + hei * 0.5;
 		ba.col = col.rgba();
-		blob(p, bx, by, ba);
+		blob(
+			p,
+			bx,
+			by,
+			ba,
+			[](double xx) {
+				return xx <= 1 ? std::pow(std::sin(xx * pi) * xx, 0.5)
+							   : -std::pow(std::sin((xx - 2) * pi * (xx - 2)), 0.5);
+			});
 	}
-}
-
-void Tree::tree03(
-	Painter& p,
-	double x,
-	double y,
-	double hei,
-	double wid,
-	const std::function<double(double)>& ben,
-	const Color& col,
-	double noi) {
-	auto benf = ben ? ben : [](double) { return 0.0; };
-	const int reso = 10;
-	std::vector<std::array<double, 2>> nslist;
-	for (int i = 0; i < reso; i++) {
-		nslist.push_back({nse(i * 0.5), nse(i * 0.5, 0.5)});
-	}
-
-	Pts line1, line2;
-	Painter blobs;
-	for (int i = 0; i < reso; i++) {
-		double nx = x + benf((double)i / reso) * 100;
-		double ny = y - ((double)i * hei) / reso;
-		if (i >= reso / 5.0) {
-			for (int j = 0; j < (reso - i) * 2; j++) {
-				auto shape = [](double xx) { return std::log(50 * xx + 1) / 3.95; };
-				double ox = rnd() * wid * 2 * shape((double)(reso - i) / reso);
-				double bx = nx + ox * randChoice<double>({-1.0, 1.0});
-				double by = ny + (rnd() - 0.5) * wid * 2;
-				BArg ba;
-				ba.len = ox * 2;
-				ba.wid = rnd() * 6 + 3;
-				ba.ang = ((rnd() - 0.5) * pi) / 6;
-				ba.col = Color{col.r, col.g, col.b, rnd() * 0.2 + col.a}.rgba();
-				blob(blobs, bx, by, ba);
-			}
-		}
-		line1.push_back({nx + ((nslist[i][0] - 0.5) * wid - wid / 2) * (reso - i) / reso, ny});
-		line2.push_back({nx + ((nslist[i][1] - 0.5) * wid + wid / 2) * (reso - i) / reso, ny});
-	}
-	Pts lc = line1;
-	lc.insert(lc.end(), line2.rbegin(), line2.rend());
-	p.poly(lc, PArg{.fil = "white", .str = col.rgba(), .wid = 1.5});
-	p.absorb(std::move(blobs));
 }
 
 void Tree::tree04(Painter& p, double x, double y, double hei, double wid, const Color& col, double noi) {
@@ -392,10 +360,11 @@ void Tree::tree04(Painter& p, double x, double y, double hei, double wid, const 
 	SArg sa;
 	sa.col = Color{100, 100, 100, 0.4 + rnd() * 0.1}.rgba();
 	sa.wid = 2.5;
-	sa.fun = [](double) { return std::sin(1); };
 	sa.noi = 0.9;
 	sa.out = 0;
-	stroke(p, offset(trmlist, x, y), sa);
+	sa.xof = x;
+	sa.yof = y;
+	stroke(p, trmlist, sa, [](double) { return std::sin(1); });
 
 	p.absorb(std::move(tx));
 	p.absorb(std::move(tw));
@@ -448,10 +417,11 @@ void Tree::tree05(Painter& p, double x, double y, double hei, double wid, const 
 	SArg sa;
 	sa.col = Color{100, 100, 100, 0.4 + rnd() * 0.1}.rgba();
 	sa.wid = 2.5;
-	sa.fun = [](double) { return std::sin(1); };
 	sa.noi = 0.9;
 	sa.out = 0;
-	stroke(p, offset(trmlist, x, y), sa);
+	sa.xof = x;
+	sa.yof = y;
+	stroke(p, trmlist, sa, [](double) { return std::sin(1); });
 
 	p.absorb(std::move(tx));
 	p.absorb(std::move(tw));
@@ -516,16 +486,18 @@ Pts fracTree6(
 
 // tree08's fracTree
 void fracTree8(Painter& p, double xoff, double yoff, int dep, double ang, double len, double ben) {
-	auto fun = dep == 0 ? [](double x) { return std::cos(0.5 * pi * x); } : [](double) { return 1.0; };
 	Pt spt = {xoff, yoff};
 	Pt ept = {xoff + std::cos(ang) * len, yoff + std::sin(ang) * len};
 
-	Pts trmlist = {{xoff, yoff}, {xoff + len, yoff}};
-	auto bfun = randChoice<std::function<double(double)>>(
-		{[](double x) { return std::sin(x * pi); }, [](double x) { return -std::sin(x * pi); }});
+	ScratchPts trmlist = {{xoff, yoff}, {xoff + len, yoff}};
+	// randChoice over {sin(x*pi), -sin(x*pi)}: one rnd() draw
+	double bflip = rnd();
 	trmlist = subdivide(trmlist, 10);
 	for (size_t i = 0; i < trmlist.size(); i++) {
-		trmlist[i][1] += bfun((double)i / trmlist.size()) * 2;
+		double bv = std::sin(((double)i / trmlist.size()) * pi);
+		if (bflip >= 0.5)
+			bv = -bv;
+		trmlist[i][1] += bv * 2;
 	}
 	for (size_t i = 0; i < trmlist.size(); i++) {
 		double d = distance(trmlist[i], spt);
@@ -534,10 +506,13 @@ void fracTree8(Painter& p, double xoff, double yoff, int dep, double ang, double
 		trmlist[i][1] = spt[1] + d * std::sin(a2 + ang);
 	}
 	SArg sa;
-	sa.fun = fun;
 	sa.wid = 0.8;
 	sa.col = "rgba(100,100,100,0.5)";
-	stroke(p, trmlist, sa);
+	if (dep == 0) {
+		stroke(p, trmlist, sa, [](double x) { return std::cos(0.5 * pi * x); });
+	} else {
+		stroke(p, trmlist, sa, [](double) { return 1.0; });
+	}
 
 	if (dep != 0) {
 		double nben = ben + randChoice<double>({-1.0, 1.0}) * pi * 0.001 * dep * dep;
@@ -566,68 +541,13 @@ void Tree::tree06(Painter& p, double x, double y, double hei, double wid, const 
 	SArg sa;
 	sa.col = Color{100, 100, 100, 0.4 + rnd() * 0.1}.rgba();
 	sa.wid = 2.5;
-	sa.fun = [](double) { return std::sin(1); };
 	sa.noi = 0.9;
 	sa.out = 0;
-	stroke(p, offset(trmlist, x, y), sa);
+	sa.xof = x;
+	sa.yof = y;
+	stroke(p, trmlist, sa, [](double) { return std::sin(1); });
 	p.absorb(std::move(tx));
 	p.absorb(std::move(tw));
-}
-
-void Tree::tree07(
-	Painter& p,
-	double x,
-	double y,
-	double hei,
-	double wid,
-	const std::function<double(double)>& ben,
-	const Color& col,
-	double noi) {
-	auto benf = ben ? ben : [](double xx) { return std::sqrt(xx) * 0.2; };
-	const int reso = 10;
-	std::vector<std::array<double, 2>> nslist;
-	for (int i = 0; i < reso; i++) {
-		nslist.push_back({nse(i * 0.5), nse(i * 0.5, 0.5)});
-	}
-
-	Pts line1, line2;
-	std::vector<Pts> T;
-	for (int i = 0; i < reso; i++) {
-		double nx = x + benf((double)i / reso) * 100;
-		double ny = y - ((double)i * hei) / reso;
-		if (i >= reso / 4.0) {
-			for (int j = 0; j < 1; j++) {
-				double bx = nx + (rnd() - 0.5) * wid * 1.2 * (reso - i) * 0.5;
-				double by = ny + (rnd() - 0.5) * wid * 0.5;
-				BArg ba;
-				ba.len = rnd() * 50 + 20;
-				ba.wid = rnd() * 12 + 12;
-				ba.ang = (-rnd() * pi) / 6;
-				ba.col = Color{col.r, col.g, col.b, col.a}.rgba();
-				ba.fun = [](double xx) {
-					return xx <= 1 ? 2.75 * xx * std::pow(1 - xx, 1 / 1.8)
-								   : 2.75 * (xx - 2) * std::pow(xx - 1, 1 / 1.8);
-				};
-				ba.ret = 1;
-				Pts bpl = blob_points(bx, by, ba);
-				auto tris = PolyTools::triangulate(bpl, TriArgs{.area = 50, .convex = true, .optimize = false});
-				T.insert(T.end(), tris.begin(), tris.end());
-			}
-		}
-		line1.push_back({nx + (nslist[i][0] - 0.5) * wid - wid / 2, ny});
-		line2.push_back({nx + (nslist[i][1] - 0.5) * wid + wid / 2, ny});
-	}
-	Pts lc = line1;
-	lc.insert(lc.end(), line2.rbegin(), line2.rend());
-	auto tris = PolyTools::triangulate(lc, TriArgs{.area = 50, .convex = true, .optimize = true});
-	tris.insert(tris.end(), T.begin(), T.end());
-
-	for (const auto& tri : tris) {
-		Pt m = PolyTools::centroid(tri);
-		int c = (int)(nse(m[0] * 0.02, m[1] * 0.02) * 200 + 50);
-		std::string co = Color{c, c, c, 0.8}.rgba();
-		p.poly(tri, PArg{.fil = co, .str = co, .wid = 0});
-	}
 }
 
 void Tree::tree08(Painter& p, double x, double y, double hei, double wid, const Color& col, double noi) {
@@ -651,10 +571,11 @@ void Tree::tree08(Painter& p, double x, double y, double hei, double wid, const 
 	SArg sa;
 	sa.col = Color{100, 100, 100, 0.6 + rnd() * 0.1}.rgba();
 	sa.wid = 2.5;
-	sa.fun = [](double) { return std::sin(1); };
 	sa.noi = 0.9;
 	sa.out = 0;
-	stroke(p, offset(trlist, x, y), sa);
+	sa.xof = x;
+	sa.yof = y;
+	stroke(p, trlist, sa, [](double) { return std::sin(1); });
 	p.absorb(std::move(tw));
 }
 

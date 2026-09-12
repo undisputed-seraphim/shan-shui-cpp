@@ -13,11 +13,11 @@ struct StickArg {
 
 struct ManArg {
 	double sca = 0.5;
-	std::function<void(Painter&, const Pt&, const Pt&, bool)> ite;
+	FunctionRef<void(Painter&, const Pt&, const Pt&, bool)> ite;
 	bool fli = true;
 	std::vector<double> ang; // optional override
 	std::vector<double> len;
-	std::function<void(Painter&, const Pt&, const Pt&, const HatArg&)> hat;
+	FunctionRef<void(Painter&, const Pt&, const Pt&, const HatArg&)> hat;
 };
 
 namespace Man {

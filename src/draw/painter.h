@@ -42,7 +42,21 @@ struct Op {
 // be serialized to SVG today or consumed by a Canvas2D/WebGL renderer later.
 class Painter {
 public:
-	void poly(const Pts& pts, const PArg& a = {});
+	// Copies points into op storage; accepts any point container
+	// (std::vector or arena-backed std::pmr::vector).
+	template <typename PtsT>
+	void poly(const PtsT& pts, const PArg& a = {}) {
+		Op op;
+		op.kind = 0;
+		op.pts.assign(pts.begin(), pts.end());
+		op.xof = a.xof;
+		op.yof = a.yof;
+		op.fil = a.fil;
+		op.str = a.str.empty() ? a.fil : a.str;
+		op.wid = a.wid;
+		ops_.push_back(std::move(op));
+	}
+
 	void text(const TArg& t);
 	void absorb(Painter&& o); // move o's ops to the end (JS canv += txcanv)
 	void clear() { ops_.clear(); }

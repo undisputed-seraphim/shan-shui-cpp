@@ -22,10 +22,12 @@ std::vector<Pts> flipNested(std::vector<Pts> ptlist, double axis = 0) {
 
 void hut(Painter& p, double xoff, double yoff, double hei = 40, double wid = 180, int tex = 300) {
 	const int reso0 = 10, reso1 = 10;
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
+	ptlist.reserve(reso0);
 	for (int i = 0; i < reso0; i++) {
 		double heir = hei + hei * 0.2 * rnd();
-		Pts row;
+		ScratchPts row;
+		row.reserve(reso1);
 		for (int j = 0; j < reso1; j++) {
 			double nx = wid * ((double)i / (reso0 - 1) - 0.5) * std::pow((double)j / (reso1 - 1), 0.7);
 			double ny = heir * ((double)j / (reso1 - 1));
@@ -33,9 +35,9 @@ void hut(Painter& p, double xoff, double yoff, double hei = 40, double wid = 180
 		}
 		ptlist.push_back(std::move(row));
 	}
-	Pts hull = ptlist[0];
+	ScratchPts hull = ptlist[0];
 	hull.pop_back();
-	Pts last = ptlist[ptlist.size() - 1];
+	ScratchPts last = ptlist[ptlist.size() - 1];
 	last.pop_back();
 	hull.insert(hull.end(), last.rbegin(), last.rend());
 	p.poly(hull, PArg{.xof = xoff, .yof = yoff, .fil = "white", .str = "none"});
@@ -49,27 +51,28 @@ void hut(Painter& p, double xoff, double yoff, double hei = 40, double wid = 180
 	ta.tex = tex;
 	ta.wid = 1;
 	ta.len = 0.25;
-	ta.col = [](double) { return Color{120, 120, 120, 0.3 + rnd() * 0.3}.rgba(); };
-	ta.dis = []() { return rejection_sample([](double a) { return a * a; }); };
-	ta.noi = [](double) { return 5.0; };
-	texture(p, ptlist, ta);
+	texture(p, ptlist, ta, [](double) { return 5.0; }, [](double) { return Color{120, 120, 120, 0.3 + rnd() * 0.3}.rgba(); },
+				   []() { return rejection_sample([](double a) { return a * a; }); });
 }
 
 struct BoxArg {
 	double hei = 20, wid = 120, rot = 0.7, per = 4;
 	bool tra = true, bot = true;
 	double wei = 3;
-	std::function<std::vector<Pts>(const std::array<Pt, 4>&)> dec;
 };
+
+struct NoDec {};
 
 struct DecoRect {
 	Pt pul, pur, pdl, pdr;
 };
 
-void box(Painter& p, double xoff, double yoff, const BoxArg& a) {
+template <typename Dec = NoDec>
+void box(Painter& p, double xoff, double yoff, const BoxArg& a, const Dec& dec = {}) {
 	double mid = -a.wid * 0.5 + a.wid * a.rot;
 	double bmid = -a.wid * 0.5 + a.wid * (1 - a.rot);
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
+	ptlist.reserve(8);
 	ptlist.push_back(subdivide({{-a.wid * 0.5, -a.hei}, {-a.wid * 0.5, 0}}, 5));
 	ptlist.push_back(subdivide({{a.wid * 0.5, -a.hei}, {a.wid * 0.5, 0}}, 5));
 	if (a.bot) {
@@ -86,14 +89,14 @@ void box(Painter& p, double xoff, double yoff, const BoxArg& a) {
 	}
 
 	double surf = (a.rot < 0.5) * 2 - 1;
-	if (a.dec) {
+	if constexpr (!std::is_same_v<Dec, NoDec>) {
 		std::array<Pt, 4> rect = {
 			Pt{surf * a.wid * 0.5, -a.hei},
 			Pt{mid, -a.hei + a.per},
 			Pt{surf * a.wid * 0.5, 0},
 			Pt{mid, a.per},
 		};
-		auto deco = a.dec(rect);
+		auto deco = dec(rect);
 		ptlist.insert(ptlist.end(), deco.begin(), deco.end());
 	}
 
@@ -106,22 +109,23 @@ void box(Painter& p, double xoff, double yoff, const BoxArg& a) {
 		sa.col = "rgba(100,100,100,0.4)";
 		sa.noi = 1;
 		sa.wid = a.wei;
-		sa.fun = [](double) { return 1.0; };
-		stroke(p, offset(row, xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, row, sa, [](double) { return 1.0; });
 	}
 }
 
 // deco(style, rect-ish args): returns list of polylines
-std::vector<Pts> deco(int style, const std::array<Pt, 4>& r, double hsp0, double hsp1, double vsp0, double vsp1) {
+ScratchPtsList deco(int style, const std::array<Pt, 4>& r, double hsp0, double hsp1, double vsp0, double vsp1) {
 	const Pt& pul = r[0];
 	const Pt& pur = r[1];
 	const Pt& pdl = r[2];
 	const Pt& pdr = r[3];
-	std::vector<Pts> plist;
-	Pts dl = subdivide({pul, pdl}, vsp1);
-	Pts dr = subdivide({pur, pdr}, vsp1);
-	Pts du = subdivide({pul, pur}, hsp1);
-	Pts dd = subdivide({pdl, pdr}, hsp1);
+	ScratchPtsList plist;
+	ScratchPts dl = subdivide({pul, pdl}, vsp1);
+	ScratchPts dr = subdivide({pur, pdr}, vsp1);
+	ScratchPts du = subdivide({pul, pur}, hsp1);
+	ScratchPts dd = subdivide({pdl, pdr}, hsp1);
 
 	if (style == 1) {
 		Pt mlu = du[(size_t)hsp0];
@@ -169,7 +173,8 @@ struct RailArg {
 void rail(Painter& p, double xoff, double yoff, double seed, const RailArg& a) {
 	double mid = -a.wid * 0.5 + a.wid * a.rot;
 	double bmid = -a.wid * 0.5 + a.wid * (1 - a.rot);
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
+	ptlist.reserve(8);
 	if (a.fro) {
 		ptlist.push_back(subdivide({{-a.wid * 0.5, 0}, {mid, a.per}}, a.seg));
 		ptlist.push_back(subdivide({{mid, a.per}, {a.wid * 0.5, 0}}, a.seg));
@@ -197,7 +202,7 @@ void rail(Painter& p, double xoff, double yoff, double seed, const RailArg& a) {
 			ptlist[i][j][1] += (nse((double)i, j * 0.5, seed) - 0.5) * a.hei;
 			size_t ci = (ptlist.size() / 2 + i) % ptlist.size();
 			ptlist[ci][j % ptlist[ci].size()][1] += (nse(i + 0.5, j * 0.5, seed) - 0.5) * a.hei;
-			Pts ln = subdivide({ptlist[i][j], ptlist[ci][j % ptlist[ci].size()]}, 2);
+			ScratchPts ln = subdivide({ptlist[i][j], ptlist[ci][j % ptlist[ci].size()]}, 2);
 			ln[0][0] += (rnd() - 0.5) * a.hei * 0.5;
 			p.poly(ln, PArg{.xof = xoff, .yof = yoff, .fil = "none", .str = "rgba(100,100,100,0.5)", .wid = 2});
 		}
@@ -207,8 +212,9 @@ void rail(Painter& p, double xoff, double yoff, double seed, const RailArg& a) {
 		sa.col = "rgba(100,100,100,0.5)";
 		sa.noi = 0.5;
 		sa.wid = a.wei;
-		sa.fun = [](double) { return 1.0; };
-		stroke(p, offset(row, xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, row, sa, [](double) { return 1.0; });
 	}
 }
 
@@ -226,7 +232,8 @@ void roof(Painter& p, double xoff, double yoff, const RoofArg& a) {
 	(void)bmid;
 	double quat = (mid + a.wid * 0.5) * 0.5 - mid;
 
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
+	ptlist.reserve(6);
 	ptlist.push_back(subdivide(
 		opf(
 			{{-a.wid * 0.5 + quat, -a.hei - a.per / 2},
@@ -254,8 +261,9 @@ void roof(Painter& p, double xoff, double yoff, const RoofArg& a) {
 		sa.col = "rgba(100,100,100,0.4)";
 		sa.noi = 1;
 		sa.wid = a.wei;
-		sa.fun = [](double) { return 1.0; };
-		stroke(p, offset(row, xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, row, sa, [](double) { return 1.0; });
 	}
 
 	if (a.pla[0] == 1) {
@@ -282,7 +290,8 @@ struct PagroofArg {
 };
 
 void pagroof(Painter& p, double xoff, double yoff, const PagroofArg& a) {
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
+	ptlist.reserve(a.sid + 1);
 	Pts polist = {{0, -a.hei}};
 	for (int i = 0; i < a.sid; i++) {
 		double fx = a.wid * ((double)i / (a.sid - 1) - 0.5);
@@ -300,8 +309,9 @@ void pagroof(Painter& p, double xoff, double yoff, const PagroofArg& a) {
 		sa.col = "rgba(100,100,100,0.4)";
 		sa.noi = 1;
 		sa.wid = a.wei;
-		sa.fun = [](double) { return 1.0; };
-		stroke(p, offset(subdivide(row, 5), xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, subdivide(row, 5), sa, [](double) { return 1.0; });
 	}
 }
 
@@ -380,10 +390,9 @@ void Arch::arch02(
 		ba.per = per;
 		double hsp[4][2] = {{0, 0}, {1, 5}, {1, 5}, {1, 4}};
 		double vsp[4][2] = {{0, 0}, {1, 2}, {1, 2}, {1, 3}};
-		ba.dec = [sty, hsp, vsp](const std::array<Pt, 4>& r) {
+		box(p, xoff, yoff - hoff, ba, [sty, hsp, vsp](const std::array<Pt, 4>& r) {
 			return deco(sty, r, hsp[sty][0], hsp[sty][1], vsp[sty][0], vsp[sty][1]);
-		};
-		box(p, xoff, yoff - hoff, ba);
+		});
 
 		if (rai) {
 			RailArg ra;
@@ -431,8 +440,7 @@ void Arch::arch03(
 		ba.rot = rot;
 		ba.wei = 1.5;
 		ba.per = per / 2;
-		ba.dec = [](const std::array<Pt, 4>& r) { return deco(1, r, 1, 4, 1, 2); };
-		box(p, xoff, yoff - hoff, ba);
+		box(p, xoff, yoff - hoff, ba, [](const std::array<Pt, 4>& r) { return deco(1, r, 1, 4, 1, 2); });
 
 		RailArg ra;
 		ra.seg = 5;
@@ -475,8 +483,7 @@ void Arch::arch04(
 		ba.rot = rot;
 		ba.wei = 1.5;
 		ba.per = per / 2;
-		ba.dec = [](const std::array<Pt, 4>&) { return std::vector<Pts>{}; };
-		box(p, xoff, yoff - hoff, ba);
+		box(p, xoff, yoff - hoff, ba, [](const std::array<Pt, 4>&) { return ScratchPtsList{}; });
 
 		RailArg ra;
 		ra.seg = 3;
@@ -503,8 +510,10 @@ void Arch::arch04(
 void Arch::boat01(Painter& p, double xoff, double yoff, double seed, double len, double sca, bool fli) {
 	double dir = fli ? -1 : 1;
 	ManArg ma;
-	ma.ite = [](Painter& p2, const Pt& a, const Pt& b, bool f) { Man::stick01(p2, a, b, StickArg{.fli = f}); };
-	ma.hat = [](Painter& p2, const Pt& a, const Pt& b, const HatArg& h) { Man::hat02(p2, a, b, h); };
+	auto ite = [](Painter& p2, const Pt& a, const Pt& b, bool f) { Man::stick01(p2, a, b, StickArg{.fli = f}); };
+	auto hat = [](Painter& p2, const Pt& a, const Pt& b, const HatArg& h) { Man::hat02(p2, a, b, h); };
+	ma.ite = ite;
+	ma.hat = hat;
 	ma.sca = 0.5 * sca;
 	ma.fli = !fli;
 	ma.len = {0, 30, 20, 30, 10, 30, 30, 30, 30};
@@ -522,18 +531,20 @@ void Arch::boat01(Painter& p, double xoff, double yoff, double seed, double len,
 	p.poly(plist, PArg{.xof = xoff, .yof = yoff, .fil = "white"});
 	SArg sa;
 	sa.wid = 1;
-	sa.fun = [](double x) { return std::sin(x * pi * 2); };
 	sa.col = "rgba(100,100,100,0.4)";
-	stroke(p, offset(plist, xoff, yoff), sa);
+	sa.xof = xoff;
+	sa.yof = yoff;
+	stroke(p, plist, sa, [](double x) { return std::sin(x * pi * 2); });
 }
 
 void Arch::transmissionTower01(Painter& p, double xoff, double yoff, double seed, double hei, double wid) {
 	auto quickstroke = [&](const Pts& pl) {
 		SArg sa;
 		sa.wid = 1;
-		sa.fun = [](double) { return 0.5; };
 		sa.col = "rgba(100,100,100,0.4)";
-		stroke(p, offset(subdivide(pl, 5), xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, subdivide(pl, 5), sa, [](double) { return 0.5; });
 	};
 
 	Pt p00 = {-wid * 0.05, -hei};
@@ -554,8 +565,8 @@ void Arch::transmissionTower01(Painter& p, double xoff, double yoff, double seed
 		quickstroke({{b[0] * wid, b[1] * hei}, {b[0] * wid, (b[1] + 0.1) * hei}});
 	}
 
-	Pts l10 = subdivide({p00, p10, p20, p30}, 5);
-	Pts l11 = subdivide({p01, p11, p21, p31}, 5);
+	ScratchPts l10 = subdivide({p00, p10, p20, p30}, 5);
+	ScratchPts l11 = subdivide({p01, p11, p21, p31}, 5);
 	for (size_t i = 0; i + 1 < l10.size(); i++) {
 		quickstroke({l10[i], l11[i + 1]});
 		quickstroke({l11[i], l10[i + 1]});

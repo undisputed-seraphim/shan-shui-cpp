@@ -1,6 +1,7 @@
 #include "scene/scene.h"
 #include "core/noise.h"
 #include "core/rng.h"
+#include "core/scratch.h"
 #include "core/util.h"
 #include "draw/painter.h"
 #include "gen/arch.h"
@@ -22,7 +23,7 @@ struct Plan {
 
 // mountplanner(xmin, xmax): returns planned features
 std::vector<Plan> mountplanner(Scene& sc, double xmin, double xmax) {
-	auto locmax = [](double x, double y, const std::function<double(double, double)>& f, int r) {
+	auto locmax = [](double x, double y, const auto& f, int r) {
 		double z0 = f(x, y);
 		if (z0 <= 0.3)
 			return false;
@@ -153,6 +154,7 @@ void Scene::chunkloader(double vxmin, double vxmax) {
 
 		for (size_t i = 0; i < plan.size(); i++) {
 			const Plan& pl = plan[i];
+			ScratchScope scratch(1 << 20); // generator temporaries for this feature
 			if (pl.tag == "mount") {
 				Painter sp;
 				Mount::mountain(sp, pl.x, pl.y, i * 2 * rnd());

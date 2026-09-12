@@ -7,8 +7,11 @@
 namespace ss {
 
 // Builds the ribbon around a polyline (like stroke, with end caps)
-static std::pair<Pts, Pts> expand(const Pts& ptlist, const std::function<double(double)>& wfun) {
+template <typename WFun>
+static std::pair<Pts, Pts> expand(const Pts& ptlist, const WFun& wfun) {
 	Pts vtxlist0, vtxlist1;
+	vtxlist0.reserve(ptlist.size());
+	vtxlist1.reserve(ptlist.size());
 	double n0 = rnd() * 10;
 	for (size_t i = 1; i + 1 < ptlist.size(); i++) {
 		double w = wfun((double)i / ptlist.size());
@@ -65,6 +68,7 @@ void Man::hat01(Painter& p, const Pt& p0, const Pt& p1, const HatArg& a) {
 		tranpoly(p0, p1, f({{-0.3, 0.5}, {0.3, 0.8}, {0.2, 1}, {0, 1.1}, {-0.3, 1.15}, {-0.55, 1}, {-0.65, 0.5}})),
 		PArg{.fil = "rgba(100,100,100,0.8)"});
 	Pts qlist1;
+	qlist1.reserve(10);
 	for (int i = 0; i < 10; i++) {
 		qlist1.push_back({-0.3 - nse(i * 0.2, seed) * i * 0.1, 0.5 - i * 0.3});
 	}
@@ -97,6 +101,7 @@ void Man::stick01(Painter& p, const Pt& p0, const Pt& p1, const StickArg& a) {
 	auto f = [fli](const Pts& pl) { return fli ? flipper(pl) : pl; };
 	Pts qlist1;
 	const int l = 12;
+	qlist1.reserve(l);
 	for (int i = 0; i < l; i++) {
 		qlist1.push_back({-nse(i * 0.1, seed) * 0.1 * std::sin(((double)i / l) * pi) * 5, 0 + i * 0.3});
 	}
@@ -106,8 +111,12 @@ void Man::stick01(Painter& p, const Pt& p0, const Pt& p1, const StickArg& a) {
 void Man::man(Painter& p, double xoff, double yoff, const ManArg& a) {
 	double sca = a.sca;
 	// default hat: hat01; default ite: nothing
-	auto hat =
-		a.hat ? a.hat : [](Painter& p2, const Pt& a2, const Pt& b2, const HatArg& h) { Man::hat01(p2, a2, b2, h); };
+	static const auto kDefaultHat = [](Painter& p2, const Pt& a2, const Pt& b2, const HatArg& h) {
+		Man::hat01(p2, a2, b2, h);
+	};
+	auto hat = a.hat;
+	if (!hat)
+		hat = kDefaultHat;
 	auto ite = a.ite;
 
 	std::vector<double> ang;
@@ -165,7 +174,7 @@ void Man::man(Painter& p, double xoff, double yoff, const ManArg& a) {
 
 	auto toGlobal = [&](const Pt& v) { return Pt{(a.fli ? -1.0 : 1.0) * v[0] + xoff, v[1] + yoff}; };
 
-	auto cloth = [&](const Pts& plist, const std::function<double(double)>& fun) {
+	auto cloth = [&](const Pts& plist, const auto& fun) {
 		Pts tlist = bezier_mid_hull(plist, 2);
 		auto [tlist1, tlist2] = expand(tlist, fun);
 		// JS: poly(tlist1.concat(tlist2.reverse())...) - reverse() mutates tlist2!

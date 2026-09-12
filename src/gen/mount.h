@@ -11,8 +11,6 @@ struct MountainArg {
 	int tex = 200;
 	bool veg = true;
 	int ret = 0;
-	std::string col; // optional custom texture color fn -> string
-	std::function<std::string(double)> colFn;
 };
 
 void mountain(Painter& p, double xoff, double yoff, double seed, const MountainArg& a = {});

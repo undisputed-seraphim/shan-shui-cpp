@@ -4,6 +4,7 @@
 #include <algorithm>
 #include <cmath>
 #include <functional>
+#include <memory>
 #include <numbers>
 #include <string>
 
@@ -24,13 +25,54 @@ double distance(const Pt& p0, const Pt& p1);
 double remap(double value, double istart, double istop, double ostart, double ostop);
 void seamless_noise(std::vector<double>& nslist);
 
+// Non-owning callback reference (replaces std::function for generator args).
+// Binds lvalues only, so callables must outlive the reference.
+template <typename Signature>
+class FunctionRef;
+
+template <typename R, typename... Args>
+class FunctionRef<R(Args...)> {
+public:
+	FunctionRef() = default;
+
+	template <typename F>
+	FunctionRef(F& f) : obj_(std::addressof(f)), invoke_(invoker<F>) {}
+
+	template <typename F>
+	FunctionRef& operator=(F& f) {
+		obj_ = std::addressof(f);
+		invoke_ = invoker<F>;
+		return *this;
+	}
+
+	explicit operator bool() const { return invoke_ != nullptr; }
+	R operator()(Args... args) const { return invoke_(obj_, std::forward<Args>(args)...); }
+
+private:
+	template <typename F>
+	static R invoker(const void* obj, Args... args) {
+		return std::invoke(*static_cast<F*>(const_cast<void*>(obj)), std::forward<Args>(args)...);
+	}
+
+	const void* obj_ = nullptr;
+	R (*invoke_)(const void*, Args...) = nullptr;
+};
+
 template <typename T>
 T randChoice(const std::vector<T>& arr) {
 	return arr[(size_t)std::floor((double)arr.size() * rnd())];
 }
 
 double normRand(double m, double M);
-double rejection_sample(const std::function<double(double)>& func);
+template <typename Func>
+double rejection_sample(const Func& func) {
+	for (;;) {
+		double x = rnd();
+		double y = rnd();
+		if (y < func(x))
+			return x;
+	}
+}
 double randGaussian();
 Pts bezier_mid_hull(const Pts& P, double w = 1);
 

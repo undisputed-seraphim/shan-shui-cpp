@@ -5,14 +5,16 @@
 namespace ss {
 
 void water(Painter& p, double xoff, double yoff, double seed, double hei, double len, int clu) {
-	std::vector<Pts> ptlist;
+	ScratchPtsList ptlist;
+	ptlist.reserve(clu);
 	double yk = 0;
 	for (int i = 0; i < clu; i++) {
-		Pts row;
+		ScratchPts row;
 		double xk = (rnd() - 0.5) * (len / 8);
 		yk += rnd() * 5;
 		double lk = len / 4 + rnd() * (len / 4);
 		const double reso = 5;
+		row.reserve((size_t)(2 * lk / reso) + 2);
 		for (double j = -lk; j < lk; j += reso) {
 			row.push_back({j + xk, std::sin(j * 0.2) * hei * nse(j * 0.1) - 20 + yk});
 		}
@@ -22,7 +24,9 @@ void water(Painter& p, double xoff, double yoff, double seed, double hei, double
 		SArg sa;
 		sa.col = Color{100, 100, 100, 0.3 + rnd() * 0.3}.rgba();
 		sa.wid = 1;
-		stroke(p, offset(ptlist[j], xoff, yoff), sa);
+		sa.xof = xoff;
+		sa.yof = yoff;
+		stroke(p, ptlist[j], sa);
 	}
 }
 

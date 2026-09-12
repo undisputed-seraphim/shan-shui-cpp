@@ -14,8 +14,8 @@ add_library(sscore STATIC
   src/core/noise.cpp
   src/core/poly.cpp
   src/core/util.cpp
+  src/core/scratch.cpp
   src/draw/painter.cpp
-  src/draw/shapes.cpp
   src/gen/tree.cpp
   src/gen/man.cpp
   src/gen/arch.cpp

@@ -3,18 +3,6 @@
 
 namespace ss {
 
-void Painter::poly(const Pts& pts, const PArg& a) {
-	Op op;
-	op.kind = 0;
-	op.pts = pts;
-	op.xof = a.xof;
-	op.yof = a.yof;
-	op.fil = a.fil;
-	op.str = a.str.empty() ? a.fil : a.str;
-	op.wid = a.wid;
-	ops_.push_back(std::move(op));
-}
-
 void Painter::text(const TArg& t) {
 	Op op;
 	op.kind = 1;
