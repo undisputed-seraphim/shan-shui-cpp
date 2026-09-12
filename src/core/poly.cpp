@@ -87,53 +87,67 @@ static double sliverRatio(const Pts& plist) {
 	return A / P;
 }
 
-// Returns [triangle, rest] (best ear cut). If none found: [plist, []]
-static std::pair<Pts, Pts> bestEar(const Pts& plist, bool convex, bool optimize) {
-	std::vector<std::pair<Pts, Pts>> cuts;
-	for (size_t i = 0; i < plist.size(); i++) {
-		const Pt& lp = plist[i != 0 ? i - 1 : plist.size() - 1];
-		const Pt& np = plist[i != plist.size() - 1 ? i + 1 : 0];
-		Pts qlist = plist;
-		qlist.erase(qlist.begin() + (long)i);
+// Ear clipping over the vertex ring without materializing rest-polygon
+// copies. !optimize returns the first valid ear (ascending index);
+// optimize picks the best sliver ratio, last maximum wins (as before).
+static size_t bestEarIndex(const Pts& plist, bool convex, bool optimize) {
+	const size_t n = plist.size();
+	const size_t none = std::string::npos;
+	if (!optimize) {
+		for (size_t i = 0; i < n; i++) {
+			const Pt& lp = plist[i != 0 ? i - 1 : n - 1];
+			const Pt& np = plist[i != n - 1 ? i + 1 : 0];
+			Pt ln[2] = {lp, np};
+			if (convex || lnInPoly(ln, plist))
+				return i;
+		}
+		return none;
+	}
+	size_t bestIdx = none;
+	double bestRatio = 0;
+	for (size_t i = 0; i < n; i++) {
+		const Pt& lp = plist[i != 0 ? i - 1 : n - 1];
+		const Pt& np = plist[i != n - 1 ? i + 1 : 0];
 		Pt ln[2] = {lp, np};
 		if (convex || lnInPoly(ln, plist)) {
 			Pts tri = {lp, plist[i], np};
-			if (!optimize)
-				return {tri, qlist};
-			cuts.push_back({tri, qlist});
+			double r = sliverRatio(tri);
+			if (r >= bestRatio) {
+				bestRatio = r;
+				bestIdx = i;
+			}
 		}
 	}
-	Pts best = plist;
-	Pts bestq;
-	double bestRatio = 0;
-	for (auto& c : cuts) {
-		double r = sliverRatio(c.first);
-		if (r >= bestRatio) {
-			best = c.first;
-			bestq = c.second;
-			bestRatio = r;
-		}
-	}
-	return {best, bestq};
+	return bestIdx;
 }
 
+// Recursive splitting turned into an explicit stack; the children are
+// pushed so the pieces come out in the original depth-first order.
 static std::vector<Pts> shatter(const Pts& plist, double a) {
-	if (plist.empty())
-		return {};
-	if (areaOf(plist) < a)
-		return {plist};
-	auto slist = sidesOf(plist);
-	size_t ind = 0;
-	for (size_t i = 0; i < slist.size(); i++)
-		if (slist[i] > slist[ind])
-			ind = i;
-	size_t nind = (ind + 1) % plist.size();
-	size_t lind = (ind + 2) % plist.size();
-	Pt mid = PolyTools::centroid({plist[ind], plist[nind]});
-	auto r1 = shatter({plist[ind], mid, plist[lind]}, a);
-	auto r2 = shatter({plist[lind], plist[nind], mid}, a);
-	r1.insert(r1.end(), r2.begin(), r2.end());
-	return r1;
+	std::vector<Pts> out;
+	std::vector<Pts> stack;
+	stack.push_back(plist);
+	while (!stack.empty()) {
+		Pts cur = std::move(stack.back());
+		stack.pop_back();
+		if (cur.empty())
+			continue;
+		if (areaOf(cur) < a) {
+			out.push_back(std::move(cur));
+			continue;
+		}
+		auto slist = sidesOf(cur);
+		size_t ind = 0;
+		for (size_t i = 0; i < slist.size(); i++)
+			if (slist[i] > slist[ind])
+				ind = i;
+		size_t nind = (ind + 1) % cur.size();
+		size_t lind = (ind + 2) % cur.size();
+		Pt mid = PolyTools::centroid({cur[ind], cur[nind]});
+		stack.push_back({cur[lind], cur[nind], mid});
+		stack.push_back({cur[ind], mid, cur[lind]});
+	}
+	return out;
 }
 
 Pt PolyTools::centroid(const Pts& plist) {
@@ -155,15 +169,25 @@ Pt PolyTools::centroid(std::initializer_list<Pt> pts) {
 }
 
 std::vector<Pts> PolyTools::triangulate(const Pts& plist, const TriArgs& args) {
-	if (plist.size() <= 3) {
+	if (plist.size() <= 3)
 		return shatter(plist, args.area);
-	} else {
-		auto cut = bestEar(plist, args.convex, args.optimize);
-		auto r = shatter(cut.first, args.area);
-		auto rest = triangulate(cut.second, args);
-		r.insert(r.end(), rest.begin(), rest.end());
-		return r;
+	const size_t n = plist.size();
+	size_t bestIdx = bestEarIndex(plist, args.convex, args.optimize);
+	if (bestIdx == std::string::npos) {
+		// no ear to clip: fall back to splitting alone (as before)
+		return shatter(plist, args.area);
 	}
+	const Pt& lp = plist[bestIdx != 0 ? bestIdx - 1 : n - 1];
+	const Pt& np = plist[bestIdx != n - 1 ? bestIdx + 1 : 0];
+	Pts tri = {lp, plist[bestIdx], np};
+	Pts rest;
+	rest.reserve(n - 1);
+	rest.insert(rest.end(), plist.begin(), plist.begin() + (long)bestIdx);
+	rest.insert(rest.end(), plist.begin() + (long)bestIdx + 1, plist.end());
+	auto r = shatter(tri, args.area);
+	auto restTris = triangulate(rest, args);
+	r.insert(r.end(), restTris.begin(), restTris.end());
+	return r;
 }
 
 } // namespace ss

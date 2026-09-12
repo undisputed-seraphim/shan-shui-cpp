@@ -2,6 +2,7 @@
 #include "core/poly.h"
 #include "core/util.h"
 #include <string>
+#include <variant>
 #include <vector>
 
 namespace ss {
@@ -27,16 +28,21 @@ struct TArg {
 	std::string fontFamily = "Verdana";
 };
 
-struct Op {
-	int kind = 0; // 0 = poly, 1 = text
-	Pts pts;
+// A drawn polygon: coordinates flattened as x0,y0,x1,y1,...
+struct PolyOp {
+	std::vector<double> pts;
 	double xof = 0, yof = 0;
 	std::string fil, str;
 	double wid = 0;
-	double x = 0, y = 0; // text position
+};
+
+struct TextOp {
+	double x = 0, y = 0;
 	double fontSize = 0, rot = 0;
 	std::string content, fontFamily, fill;
 };
+
+using Op = std::variant<PolyOp, TextOp>;
 
 // Accumulator of drawing operations. Generators paint into this; the ops can
 // be serialized to SVG today or consumed by a Canvas2D/WebGL renderer later.
@@ -46,9 +52,12 @@ public:
 	// (std::vector or arena-backed std::pmr::vector).
 	template <typename PtsT>
 	void poly(const PtsT& pts, const PArg& a = {}) {
-		Op op;
-		op.kind = 0;
-		op.pts.assign(pts.begin(), pts.end());
+		PolyOp op;
+		op.pts.reserve(pts.size() * 2);
+		for (const auto& p : pts) {
+			op.pts.push_back(p[0]);
+			op.pts.push_back(p[1]);
+		}
 		op.xof = a.xof;
 		op.yof = a.yof;
 		op.fil = a.fil;
