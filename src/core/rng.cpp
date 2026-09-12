@@ -1,78 +1,25 @@
 #include "core/rng.h"
-#include <array>
-
-namespace ss {} // namespace ss
+#include "core/noise.h"
 
 namespace ss {
 
-// Minimal base64 encoder matching window.btoa for ASCII input.
-static std::string b64encode(const std::string& in) {
-	static const char* T = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-	std::string out;
-	out.reserve(((in.size() + 2) / 3) * 4);
-	size_t i = 0;
-	while (i + 2 < in.size()) {
-		unsigned v = (unsigned char)in[i] << 16 | (unsigned char)in[i + 1] << 8 | (unsigned char)in[i + 2];
-		out += T[(v >> 18) & 63];
-		out += T[(v >> 12) & 63];
-		out += T[(v >> 6) & 63];
-		out += T[v & 63];
-		i += 3;
+static inline uint64_t rotl(uint64_t x, int k) { return (x << k) | (x >> (64 - k)); }
+
+// FNV-1a over the seed string, then splitmix64 expansion for the 4 states.
+static uint64_t hashSeed(const std::string& x) {
+	uint64_t h = 0xcbf29ce484222325ULL;
+	for (unsigned char c : x) {
+		h ^= c;
+		h *= 0x100000001b3ULL;
 	}
-	if (i + 1 == in.size()) {
-		unsigned v = (unsigned char)in[i] << 16;
-		out += T[(v >> 18) & 63];
-		out += T[(v >> 12) & 63];
-		out += "==";
-	} else if (i + 2 == in.size()) {
-		unsigned v = (unsigned char)in[i] << 16 | (unsigned char)in[i + 1] << 8;
-		out += T[(v >> 18) & 63];
-		out += T[(v >> 12) & 63];
-		out += T[(v >> 6) & 63];
-		out += '=';
-	}
-	return out;
+	return h;
 }
 
-// JSON.stringify() for a string value (adds quotes and escapes).
-static std::string jsonStringify(const std::string& s) {
-	static const char* HEX = "0123456789abcdef";
-	std::string r = "\"";
-	for (unsigned char c : s) {
-		switch (c) {
-		case '"':
-			r += "\\\"";
-			break;
-		case '\\':
-			r += "\\\\";
-			break;
-		case '\n':
-			r += "\\n";
-			break;
-		case '\r':
-			r += "\\r";
-			break;
-		case '\t':
-			r += "\\t";
-			break;
-		case '\b':
-			r += "\\b";
-			break;
-		case '\f':
-			r += "\\f";
-			break;
-		default:
-			if (c < 0x20) {
-				r += "\\u00";
-				r += HEX[c >> 4];
-				r += HEX[c & 15];
-			} else {
-				r += (char)c;
-			}
-		}
-	}
-	r += "\"";
-	return r;
+static uint64_t splitmix64(uint64_t& state) {
+	uint64_t z = (state += 0x9e3779b97f4a7c15ULL);
+	z = (z ^ (z >> 30)) * 0xbf58476d1ce4e5b9ULL;
+	z = (z ^ (z >> 27)) * 0x94d049bb133111ebULL;
+	return z ^ (z >> 31);
 }
 
 Rng& Rng::inst() {
@@ -80,33 +27,23 @@ Rng& Rng::inst() {
 	return r;
 }
 
-double Rng::hash(const std::string& x) const {
-	std::string y = b64encode(jsonStringify(x));
-	double z = 0;
-	for (size_t i = 0; i < y.size(); i++) {
-		z += (double)(unsigned char)y[i] * pow128((int)i);
-	}
-	return z;
-}
-
 void Rng::seed(const std::string& x) {
-	double y = 0;
-	double z = 0;
-	auto redo = [&]() {
-		y = std::fmod(hash(x) + z, m);
-		z += 1;
-	};
-	while (std::fmod(y, P) == 0 || std::fmod(y, Q) == 0 || y == 0 || y == 1) {
-		redo();
-	}
-	s = y;
-	for (int i = 0; i < 10; i++)
-		next();
+	uint64_t sm = hashSeed(x);
+	for (auto& v : s_)
+		v = splitmix64(sm);
+	Noise::inst().rebuild(); // the perlin table derives from the stream
 }
 
 double Rng::next() {
-	s = std::fmod(s * s, m);
-	return s / m;
+	const uint64_t result = rotl(s_[1] * 5, 7) * 9;
+	const uint64_t t = s_[1] << 17;
+	s_[2] ^= s_[0];
+	s_[3] ^= s_[1];
+	s_[1] ^= s_[2];
+	s_[0] ^= s_[3];
+	s_[2] ^= t;
+	s_[3] = rotl(s_[3], 45);
+	return (result >> 11) * 0x1.0p-53; // [0, 1)
 }
 
 } // namespace ss

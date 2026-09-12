@@ -12,9 +12,7 @@ Noise& Noise::inst() {
 	return n;
 }
 
-void Noise::ensure() {
-	if (!perlin.empty())
-		return;
+void Noise::rebuild() {
 	perlin.assign(SIZE + 1, 0.0);
 	std::ranges::generate(perlin, [] { return rnd(); });
 }
@@ -22,7 +20,8 @@ void Noise::ensure() {
 static double scaledCosine(double i) { return 0.5 * (1.0 - std::cos(i * pi)); }
 
 double Noise::noise(double x, double y, double z) {
-	ensure();
+	if (perlin.empty())
+		rebuild();
 	if (x < 0)
 		x = -x;
 	if (y < 0)
@@ -89,17 +88,6 @@ void Noise::noiseDetail(double lod, double falloff) {
 		perlinOctaves = (int)lod;
 	if (falloff > 0)
 		perlinAmpFalloff = falloff;
-}
-
-void Noise::noiseSeed(double seed) {
-	// LCG as in the original: z = (a*z + c) % m with z = seed >>> 0
-	const double m = 4294967296.0, a = 1664525.0, c = 1013904223.0;
-	double z = std::fmod(std::fabs(seed), m);
-	perlin.assign(SIZE + 1, 0.0);
-	std::ranges::generate(perlin, [&] {
-		z = std::fmod(a * z + c, m);
-		return z / m;
-	});
 }
 
 } // namespace ss

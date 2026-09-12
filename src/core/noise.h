@@ -3,19 +3,18 @@
 
 namespace ss {
 
-// Port of the p5.js Perlin noise (index.html <script id="PerlinNoise">).
-// The value table is built lazily from the global PRNG (Math.random override).
+// Perlin noise (p5.js-style). The value table derives from the global PRNG
+// and is rebuilt whenever Rng::seed() reseeds the stream.
 class Noise {
 public:
 	static Noise& inst();
 
 	double noise(double x, double y = 0, double z = 0);
 	void noiseDetail(double lod, double falloff);
-	void noiseSeed(double seed);
+	void rebuild();
 
 private:
 	Noise() = default;
-	void ensure();
 
 	static constexpr int YWRAPB = 4;
 	static constexpr int YWRAP = 1 << YWRAPB;

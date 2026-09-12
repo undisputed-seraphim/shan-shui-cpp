@@ -1,31 +1,25 @@
 #pragma once
-#include <cmath>
+#include <cstdint>
 #include <string>
 
 namespace ss {
 
-// Port of the original Blum-Blum-Shub style PRNG (index.html <script id="PRNG">).
-// Must reproduce the JS double-precision behavior exactly: all state is double,
-// s*s is computed as double, and modulus uses fmod.
+// xoshiro256** seeded from the seed string via FNV-1a + splitmix64.
+// Integer-only: bit-identical results on every platform.
 class Rng {
 public:
 	static Rng& inst();
 
 	void seed(const std::string& x);
-	double next();
+	double next(); // uniform in [0, 1)
 
 private:
 	Rng() = default;
-	double hash(const std::string& x) const;
-	static double pow128(int i) { return std::ldexp(1.0, 7 * i); }
 
-	double s = 1234;
-	static constexpr double P = 999979.0;
-	static constexpr double Q = 999983.0;
-	double m = P * Q; // 999962000357.0
+	uint64_t s_[4] = {
+		0x9e3779b97f4a7c15ULL, 0x243f6a8885a308d3ULL, 0x13198a2e03707344ULL, 0xa4093822299f31d0ULL};
 };
 
-// "Math.random()"
 inline double rnd() { return Rng::inst().next(); }
 
 } // namespace ss
