@@ -4,20 +4,20 @@
 namespace ss {
 
 struct HatArg {
-  bool fli = false;
+	bool fli = false;
 };
 
 struct StickArg {
-  bool fli = false;
+	bool fli = false;
 };
 
 struct ManArg {
-  double sca = 0.5;
-  std::function<void(Painter&, const Pt&, const Pt&, bool)> ite;
-  bool fli = true;
-  std::vector<double> ang; // optional override
-  std::vector<double> len;
-  std::function<void(Painter&, const Pt&, const Pt&, const HatArg&)> hat;
+	double sca = 0.5;
+	std::function<void(Painter&, const Pt&, const Pt&, bool)> ite;
+	bool fli = true;
+	std::vector<double> ang; // optional override
+	std::vector<double> len;
+	std::function<void(Painter&, const Pt&, const Pt&, const HatArg&)> hat;
 };
 
 namespace Man {

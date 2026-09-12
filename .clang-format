@@ -1,0 +1,27 @@
+Language: Cpp
+ColumnLimit: 120
+
+# Tabs
+UseTab: Always
+IndentWidth: 4
+TabWidth: 4
+
+# Visibility
+IndentAccessModifiers: false
+AccessModifierOffset: -4
+
+# Constructors
+BreakConstructorInitializers: BeforeComma
+
+PointerAlignment: Left
+
+# Function declaration
+BinPackArguments: false
+BinPackParameters: false
+ExperimentalAutoDetectBinPacking: false
+AllowAllParametersOfDeclarationOnNextLine: false
+AlignAfterOpenBracket: AlwaysBreak
+AlwaysBreakAfterReturnType: None
+
+# Templates
+AlwaysBreakTemplateDeclarations: true
