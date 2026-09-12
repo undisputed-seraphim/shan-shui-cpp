@@ -51,8 +51,13 @@ void hut(Painter& p, double xoff, double yoff, double hei = 40, double wid = 180
 	ta.tex = tex;
 	ta.wid = 1;
 	ta.len = 0.25;
-	texture(p, ptlist, ta, [](double) { return 5.0; }, [](double) { return Color{120, 120, 120, 0.3 + rnd() * 0.3}.rgba(); },
-				   []() { return rejection_sample([](double a) { return a * a; }); });
+	texture(
+		p,
+		ptlist,
+		ta,
+		[](double) { return 5.0; },
+		[](double) { return Color{120, 120, 120, 0.3 + rnd() * 0.3}.rgba(); },
+		[]() { return rejection_sample([](double a) { return a * a; }); });
 }
 
 struct BoxArg {

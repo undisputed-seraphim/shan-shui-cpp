@@ -127,8 +127,8 @@ void Scene::chunkloader(double vxmin, double vxmax) {
 			chunks.push_back(nch);
 			return;
 		}
-		auto lb = std::lower_bound(
-			chunks.begin(), chunks.end(), nch.y, [](const Chunk& c, double y) { return c.y < y; });
+		auto lb =
+			std::lower_bound(chunks.begin(), chunks.end(), nch.y, [](const Chunk& c, double y) { return c.y < y; });
 		chunks.insert(lb, nch);
 	};
 

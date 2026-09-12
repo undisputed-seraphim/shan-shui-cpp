@@ -312,15 +312,9 @@ void Tree::tree02(Painter& p, double x, double y, double hei, double wid, int cl
 		ba.wid = rnd() * wid * 0.75 + wid * 0.5;
 		ba.len = rnd() * hei * 0.75 + hei * 0.5;
 		ba.col = col.rgba();
-		blob(
-			p,
-			bx,
-			by,
-			ba,
-			[](double xx) {
-				return xx <= 1 ? std::pow(std::sin(xx * pi) * xx, 0.5)
-							   : -std::pow(std::sin((xx - 2) * pi * (xx - 2)), 0.5);
-			});
+		blob(p, bx, by, ba, [](double xx) {
+			return xx <= 1 ? std::pow(std::sin(xx * pi) * xx, 0.5) : -std::pow(std::sin((xx - 2) * pi * (xx - 2)), 0.5);
+		});
 	}
 }
 

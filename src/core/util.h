@@ -36,7 +36,9 @@ public:
 	FunctionRef() = default;
 
 	template <typename F>
-	FunctionRef(F& f) : obj_(std::addressof(f)), invoke_(invoker<F>) {}
+	FunctionRef(F& f)
+		: obj_(std::addressof(f))
+		, invoke_(invoker<F>) {}
 
 	template <typename F>
 	FunctionRef& operator=(F& f) {

@@ -11,14 +11,7 @@ namespace Tree {
 inline constexpr auto kDefaultBend = [](double) { return 0.0; };
 inline constexpr auto kDefaultBend07 = [](double xx) { return std::sqrt(xx) * 0.2; };
 
-void tree01(
-	Painter& p,
-	double x,
-	double y,
-	double hei = 50,
-	double wid = 3,
-	const Color& col = {},
-	double noi = 0.5);
+void tree01(Painter& p, double x, double y, double hei = 50, double wid = 3, const Color& col = {}, double noi = 0.5);
 void tree02(
 	Painter& p,
 	double x,
@@ -71,30 +64,9 @@ void tree03(
 	p.poly(lc, PArg{.fil = "white", .str = col.rgba(), .wid = 1.5});
 	p.absorb(std::move(blobs));
 }
-void tree04(
-	Painter& p,
-	double x,
-	double y,
-	double hei = 300,
-	double wid = 6,
-	const Color& col = {},
-	double noi = 0.5);
-void tree05(
-	Painter& p,
-	double x,
-	double y,
-	double hei = 300,
-	double wid = 5,
-	const Color& col = {},
-	double noi = 0.5);
-void tree06(
-	Painter& p,
-	double x,
-	double y,
-	double hei = 100,
-	double wid = 6,
-	const Color& col = {},
-	double noi = 0.5);
+void tree04(Painter& p, double x, double y, double hei = 300, double wid = 6, const Color& col = {}, double noi = 0.5);
+void tree05(Painter& p, double x, double y, double hei = 300, double wid = 5, const Color& col = {}, double noi = 0.5);
+void tree06(Painter& p, double x, double y, double hei = 100, double wid = 6, const Color& col = {}, double noi = 0.5);
 template <typename Ben = decltype(kDefaultBend07)>
 void tree07(
 	Painter& p,
@@ -149,14 +121,7 @@ void tree07(
 		p.poly(tri, PArg{.fil = co, .str = co, .wid = 0});
 	}
 }
-void tree08(
-	Painter& p,
-	double x,
-	double y,
-	double hei = 80,
-	double wid = 1,
-	const Color& col = {},
-	double noi = 0.5);
+void tree08(Painter& p, double x, double y, double hei = 80, double wid = 1, const Color& col = {}, double noi = 0.5);
 } // namespace Tree
 
 } // namespace ss

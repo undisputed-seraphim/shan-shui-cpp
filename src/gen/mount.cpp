@@ -605,11 +605,17 @@ void Mount::rock(
 		ta.tex = tex;
 		ta.wid = 3;
 		ta.sha = sha;
-		texture(p, ptlist, ta, {}, [](double) { return Color{180, 180, 180, 0.3 + rnd() * 0.3}.rgba(); }, []() {
-			if (rnd() > 0.5)
-				return 0.15 + 0.15 * rnd();
-			return 0.85 - 0.15 * rnd();
-		});
+		texture(
+			p,
+			ptlist,
+			ta,
+			{},
+			[](double) { return Color{180, 180, 180, 0.3 + rnd() * 0.3}.rgba(); },
+			[]() {
+				if (rnd() > 0.5)
+					return 0.15 + 0.15 * rnd();
+				return 0.85 - 0.15 * rnd();
+			});
 	}
 	(void)ret;
 }

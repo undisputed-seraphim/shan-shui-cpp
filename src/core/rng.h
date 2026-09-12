@@ -16,8 +16,7 @@ public:
 private:
 	Rng() = default;
 
-	uint64_t s_[4] = {
-		0x9e3779b97f4a7c15ULL, 0x243f6a8885a308d3ULL, 0x13198a2e03707344ULL, 0xa4093822299f31d0ULL};
+	uint64_t s_[4] = {0x9e3779b97f4a7c15ULL, 0x243f6a8885a308d3ULL, 0x13198a2e03707344ULL, 0xa4093822299f31d0ULL};
 };
 
 inline double rnd() { return Rng::inst().next(); }

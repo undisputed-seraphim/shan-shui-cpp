@@ -158,12 +158,7 @@ static void handleConn(int fd, const std::string& root, const std::string& peer)
 			body.size());
 		size_t n1 = sendStr(fd, hdr);
 		size_t n2 = sendStr(fd, body);
-		printf(
-			"[%s] %s RES %s -> 404 (%zu bytes)\n",
-			nowStamp().c_str(),
-			peer.c_str(),
-			path.c_str(),
-			n1 + n2);
+		printf("[%s] %s RES %s -> 404 (%zu bytes)\n", nowStamp().c_str(), peer.c_str(), path.c_str(), n1 + n2);
 	} else {
 		printf("[%s] %s RES %s -> 200 (%zd bytes)\n", nowStamp().c_str(), peer.c_str(), path.c_str(), sent);
 	}
